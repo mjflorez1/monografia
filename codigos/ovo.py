@@ -35,36 +35,3 @@ faux = np.sort(faux)
 p = 40
 
 fovo = faux[p-1]
-
-
-
-
-# Definimos la función
-
-
-
-# def analyze_encased_functions(table, p, epsilon):
-#     #Recuperamos el valor de y_p para el índice p
-#     y_p = table.loc[table['i'] == p, 'y_i'].values[0]
-
-#     #Calculamos el intervalo I_{epsilon}
-#     lower_bound = y_p - epsilon
-#     upper_bound = y_p + epsilon
-
-#     #Identificamos los índices i con y_i dentro de I_{epsilon}
-#     enclosed_functions = table[(table['y_i'] >= lower_bound) & (table['y_i'] <= upper_bound)]['i'].tolist()
-
-#     return enclosed_functions
-
-
-
-#Definimos parámetros
-p = 1
-epsilon = 0.8
-
-#Ejecutamos el análisis
-enclosed_functions_v3 = analyze_encased_functions(table_1, p, epsilon)
-
-# Mostramos resultados
-# print(f"Funciones encerradas en I_{{epsilon}} para p = {p}, epsilon = {epsilon}:")
-# print(enclosed_functions_v3)
