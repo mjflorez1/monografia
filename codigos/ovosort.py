@@ -29,7 +29,7 @@ faux = np.zeros(m)
 for i in range(m):
   faux[i] = f_i(t[i], y[i], xk)
 
-original_index = np.arange(1, m)
+faux_index = np.arange(1, m)
 
 faux_sort = np.sort(faux)
 sorted_index = np.argsort(faux) + 1
@@ -38,7 +38,7 @@ p = 35
 
 fovo = faux[p - 1]
 
-#print(original_index)
+#print(faux_index)
 #print(faux)
 #print(fovo)
 print(faux_sort)
