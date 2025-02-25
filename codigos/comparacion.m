@@ -55,7 +55,7 @@ disp(coeff_polyfit)
 disp('Coeficientes del polinomio ajustado con lsqnonlin:')
 disp(x_lsq)
 
-% GRÁFICA COMPARATIVA 
+% GRÁFICA COMPARATIVA
 figure;
 scatter(t, y, 'filled'); hold on; % Datos con ruido y valores atípicos
 plot(t, w, 'r', 'LineWidth', 1.5); % Modelo original
