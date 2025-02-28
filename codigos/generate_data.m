@@ -28,9 +28,6 @@ data_table = table(t, y);
 disp('Tabla 1: Datos generados para ajuste polinómico')
 disp(data_table)
 
-% Guardar la tabla en un archivo CSV (opcional)
-writetable(data_table, 'datos_OVO.csv')
-
 % Visualización de los datos
 figure;
 scatter(t, y, 'filled'); hold on;
