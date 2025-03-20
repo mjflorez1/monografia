@@ -35,3 +35,14 @@ faux = np.sort(faux)
 p = 40
 
 fovo = faux[p-1]
+
+# Guardar t e y en un archivo .txt (columnas separadas por espacios)
+np.savetxt(
+    "data.txt",
+    np.column_stack((t, y)),  # Combina t e y como columnas
+    delimiter=" ",
+    fmt="%.6f",               # 6 decimales
+    header="t y"              # Opcional: nombres de columnas
+)
+from google.colab import files
+files.download("data.txt")
