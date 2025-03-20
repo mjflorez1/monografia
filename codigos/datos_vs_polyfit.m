@@ -10,7 +10,7 @@ t = datos(:,1);  % Primera columna (valores de t)
 y = datos(:,2);  % Segunda columna (valores de y)
 
 % Definir los coeficientes del modelo verdadero
-x_star = [0, 2, -3, 1];  % Coeficientes reales (como en el código original)
+x_star = [0, 2, -3, 1];  % Coeficientes reales
 
 % Calcular los valores de w (modelo verdadero sin ruido)
 w = x_star(1) + x_star(2) * t + x_star(3) * t.^2 + x_star(4) * t.^3;
