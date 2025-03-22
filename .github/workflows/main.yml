@@ -3,7 +3,7 @@ name: Auto Sync to GitHub
 on:
   push:
     branches:
-      - main  # Se ejecuta cuando hay cambios en la rama main
+      - main
 
 jobs:
   sync:
@@ -11,12 +11,19 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
+
       - name: Set up Git
         run: |
           git config --global user.email "tu-email@example.com"
           git config --global user.name "tu-nombre"
-      - name: Push Changes
+
+      - name: Check for changes
         run: |
           git add .
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit"
+            exit 0
+          fi
           git commit -m "Auto-sync to GitHub"
+          git push origin main
           git push origin main
