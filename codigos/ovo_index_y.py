@@ -29,19 +29,40 @@ faux = np.zeros(m)
 for i in range(m):
   faux[i] = f_i(t[i], y[i], xk)
 
-faux_index = np.arange(1, m)
+#Indices de y y faux
+original_index = np.arange(1, m)
+y_index = np.arange(1, m)
 
+#Indices de faux organizados
 faux_sort = np.sort(faux)
 sorted_index = np.argsort(faux) + 1
 
+#Posicion p y epsilon
 p = 35
+eps = 1
 
+#valor f(p) para faux y y
 fovo = faux[p - 1]
+y_p = y[p - 1]
 
-#print(faux_index)
+#calculamos el intervalo I_eps
+l_bound = y_p - eps
+u_bound = y_p + eps
+
+idx = []
+for i in range(1, m - 1):
+  if l_bound <= y[i] <= u_bound:
+    idx.append(i + 1)
+
+#print(idx)
+
+#print(original_index)
 #print(faux)
 #print(fovo)
-print(faux_sort)
-print(sorted_index)
+print(y_p)
+#print(faux_sort)
+#print(sorted_index)
 
-#print(y)
+print(y)
+#print(y_index)
+print(f'Valores de faux dentro de I_eps: ', idx)
