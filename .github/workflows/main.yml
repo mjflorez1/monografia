@@ -1,0 +1,22 @@
+name: Auto Sync to GitHub
+
+on:
+  push:
+    branches:
+      - main  # Se ejecuta cuando hay cambios en la rama main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Set up Git
+        run: |
+          git config --global user.email "tu-email@example.com"
+          git config --global user.name "tu-nombre"
+      - name: Push Changes
+        run: |
+          git add .
+          git commit -m "Auto-sync to GitHub"
+          git push origin main
