@@ -1,7 +1,5 @@
 import numpy as np
-import pandas as pd
 import random
-import matplotlib.pyplot as plt
 
 # Definimos el modelo cubico
 def model(t,x1,x2,x3,x4):
@@ -36,13 +34,8 @@ p = 40
 
 fovo = faux[p-1]
 
-# Guardar t e y en un archivo .txt (columnas separadas por espacios)
-np.savetxt(
-    "data.txt",
-    np.column_stack((t, y)),  # Combina t e y como columnas
-    delimiter=" ",
-    fmt="%.6f",               # 6 decimales
-    header="t y"              # Opcional: nombres de columnas
-)
-from google.colab import files
-files.download("data.txt")
+with open('data.txt', 'w') as f:
+    f.write(f'{m}\n')
+    
+    for i in range(m):
+        f.write(f'{t[i]} {y[i]}\n')
