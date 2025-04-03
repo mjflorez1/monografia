@@ -1,11 +1,9 @@
 import numpy as np
 import random
-import pandas as pd
-import matplotlib.pyplot as plt
 
 #Definimos el modelo cubico
 def model(t, x1, x2, x3, x4):
-  return x1 + (x2 * t) + (x3 * t  2) + (x4 * t  3)
+  return x1 + (x2 * t) + (x3 * t ** 2) + (x4 * t ** 3)
 
 def f_i(ti, yi, x):
   return (model(ti, *x) - yi) ** 2

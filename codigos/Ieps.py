@@ -28,7 +28,7 @@ indices = np.argsort(faux)
 
 # Posición p y epsilon
 p = 36
-eps = 1
+eps = 0.1
 Ieps = []
 
 # Valor de la función objetivo
