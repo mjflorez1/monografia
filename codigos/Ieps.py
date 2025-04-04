@@ -2,11 +2,11 @@ import numpy as np
 
 # Modelo cúbico
 def model(t, x1, x2, x3, x4):
-    return x1 + x2 * t + x3 * t**2 + x4 * t**3
+    return x1 + (x2 * t) + (x3 * t ** 2) + (x4 * t ** 3)
 
-# Función de error para cada dato
+# Función de error
 def f_i(ti, yi, x):
-    return (model(ti, *x) - yi)**2
+    return (model(ti, *x) - yi) ** 2
 
 # Leer datos desde data.txt
 with open("data.txt", "r") as f:
@@ -25,25 +25,25 @@ for line in lines[1:]:
 t = np.array(t)
 y = np.array(y)
 
-# Definimos el punto en el que evaluamos (por ejemplo, el punto inicial)
+# Definimos el punto en el que evaluamos
 x = np.array([-1, -2, 1, -1])
 
 # Calculamos f_i(x) para cada dato
 f_values = np.array([f_i(t[i], y[i], x) for i in range(m)])
 
-# Parámetros de la definición del intervalo:
-p = 36           # p-ésimo valor (puedes ajustar este parámetro)
-eps = 100        # ε (puedes cambiarlo, por ejemplo, 0.8, 1.0, etc.)
+# Parámetros
+p = 36
+eps = 100
 
-# Ordenamos los f_values y obtenemos los índices de ordenamiento
+# Ordenamos los valores y obtenemos índices ordenados
 sorted_indices = np.argsort(f_values)
 sorted_f = f_values[sorted_indices]
 
-# f(x) se define como el p-ésimo valor (recordar que los índices en Python empiezan en 0)
+# f(x) es el p-ésimo valor ordenado
 f_p = sorted_f[p]
 
-# Construimos I₍ε₎(x): índices i tales que f_i(x) ∈ [f_p, f_p + eps]
-I_eps = [int(sorted_indices[i]) for i in range(m) if sorted_f[i] >= f_p and sorted_f[i] <= f_p + eps]
+# Construcción de I_eps con np.abs() para incluir todos los valores cercanos
+I_eps = [int(sorted_indices[i]) for i in range(m) if np.abs(sorted_f[i] - f_p) <= eps]
 
 print("f(x) (p-ésimo valor) =", f_p)
 print("I₍ε₎(x) =", I_eps)
