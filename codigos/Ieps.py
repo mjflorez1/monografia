@@ -32,18 +32,18 @@ x = np.array([-1, -2, 1, -1])
 f_values = np.array([f_i(t[i], y[i], x) for i in range(m)])
 
 # Parámetros
-p = 36
-eps = 100
+p = 35
+eps = 10
 
 # Ordenamos los valores y obtenemos índices ordenados
-sorted_indices = np.argsort(f_values)
-sorted_f = f_values[sorted_indices]
+sorted_idx = np.argsort(f_values)
+sorted_f = f_values[sorted_idx]
 
 # f(x) es el p-ésimo valor ordenado
 f_p = sorted_f[p]
 
 # Construcción de I_eps con np.abs() para incluir todos los valores cercanos
-I_eps = [int(sorted_indices[i]) for i in range(m) if np.abs(sorted_f[i] - f_p) <= eps]
+I_eps = [int(sorted_idx[i]) for i in range(m) if np.abs(sorted_f[i] - f_p) <= eps]
 
 print("f(x) (p-ésimo valor) =", f_p)
 print("I₍ε₎(x) =", I_eps)
