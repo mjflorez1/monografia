@@ -20,7 +20,7 @@ limites = [(0, None), (0, None)]
 x0 = [0, 0]
 
 # Resolver
-resultado = minimize(objetivo, x0, method='SLSQP', bounds=limites, constraints=restricciones)
+resultado = minimize(objetivo, x0, constraints=restricciones)
 
 # Mostrar resultados
 print("Punto óptimo:", resultado.x)
@@ -28,4 +28,4 @@ print("Valor mínimo:", resultado.fun)  # le cambiamos el signo para que sea el 
 
 for x0 in [[0, 0], [1, 1], [6, 2], [10, 10]]:
     res = minimize(objetivo, x0, constraints=restricciones)
-    print(f"x0 = {x0} → x* = {res.x}, Z = {-res.fun}")
+    print(f"x0 = {x0} → x* = {res.x}, Z = {res.fun}")
