@@ -20,9 +20,9 @@ constraints = [{'type': 'eq', 'fun': constraint1},
 #Valores iniciales para x1, x2, x3
 x0 = np.array([0, 0, 0])  # Puedes cambiar estos valores
 
-#Resolver el problema de optimización
+#Resolvemos el problema de optimización
 solution = minimize(objective, x0, constraints=constraints)
 
-#Imprimir resultados
+#Resultados
 print("Valores óptimos:", solution.x)
 print("Valor mínimo de la función objetivo:", solution.fun)
