@@ -46,4 +46,4 @@ f_p = sorted_f[p]
 I_eps = [int(sorted_idx[i]) for i in range(m) if np.abs(sorted_f[i] - f_p) <= eps]
 
 print("f(x) (p-ésimo valor) =", f_p)
-print("I₍ε₎(x) =", I_eps)
+print("I_{eps}(x) =", I_eps)
