@@ -18,10 +18,10 @@ constraints = [{'type': 'eq', 'fun': constraint1},
                {'type': 'eq', 'fun': constraint2}]
 
 #Valores iniciales para x1, x2, x3
-x0 = np.array([0, 0, 0])  # Puedes cambiar estos valores
+x0 = np.array([1.71, 0.57, 0])  # Puedes cambiar estos valores
 
 #Resolvemos el problema de optimización
-solution = minimize(objective, x0, constraints=constraints)
+solution = minimize(objective,x0,constraints=constraints,options={'disp':True})
 
 #Resultados
 print("Valores óptimos:", solution.x)
