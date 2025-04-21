@@ -1,5 +1,4 @@
 import numpy as np
-import json
 from scipy.optimize import minimize, linprog
 
 # Leer los datos
