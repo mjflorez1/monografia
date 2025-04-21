@@ -19,8 +19,6 @@ for i in range(6):
 for i in range(16,m):
     y[i] = model(t[i],*xstar) + random.uniform(-0.01, 0.01)
 
-with open("data.txt","w") as f:
-    f.write(f"{m}\n")
-    
+with open("data.txt","w") as f:    
     for i in range(m):
         f.write(f"{t[i]} {y[i]}\n")
