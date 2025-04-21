@@ -33,7 +33,7 @@ f_values = np.array([f_i(t[i], y[i], x) for i in range(m)])
 
 # Parámetros
 p = 35
-eps = 10
+eps = 100
 
 # Ordenamos los valores y obtenemos índices ordenados
 sorted_idx = np.argsort(f_values)
@@ -47,3 +47,4 @@ I_eps = [int(sorted_idx[i]) for i in range(m) if np.abs(sorted_f[i] - f_p) <= ep
 
 print("f(x) (p-ésimo valor) =", f_p)
 print("I_{eps}(x) =", I_eps)
+print(sorted_f)

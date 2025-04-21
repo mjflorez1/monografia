@@ -15,9 +15,7 @@ def load_data(filename="data.txt"):
         y.append(yi)
     return np.array(t), np.array(y)
 
-# ------------------------------
-# 2. Modelo cúbico y funciones f_i(x)
-# ------------------------------
+# Modelo cúbico y funciones f_i(x)
 def model(t, x):
     return x[0] + x[1]*t + x[2]*t**2 + x[3]*t**3
 
@@ -38,17 +36,12 @@ def compute_I_delta(x, t, y, q, delta):
     return I_delta, f_vals, indices
 
 # Guardar restricciones
-def save_constraints(x, t, y, I_delta, filename="restrictions.json"):
-    constraints = []
-    for j in I_delta:
-        grad = grad_f_i(x, t[j], y[j])
-        constraints.append({
-            "index": int(j),
-            "gradient": grad.tolist(),
-            "inequality": "g_j^T (x - x_k) <= w"
-        })
-    with open(filename, 'w') as f:
-        json.dump(constraints, f, indent=2)
+def save_constraints(x, t, y, I_delta, iter_num, filename="restricciones.txt"):
+    with open(filename, "a") as f:
+        for j in I_delta:
+            grad = grad_f_i(x, t[j], y[j])
+            restr = " + ".join([f"{grad[k]:.4f}*x{k+1}" for k in range(len(grad))])
+            f.write(f"Iteración {iter_num} - Restricción {j}: {restr} <= w\n")
         
 # Subproblema usando linprog (simplificación)
 def solve_subproblem(xk, t, y, I_delta, delta=0.1):
@@ -88,7 +81,7 @@ def ovo_algorithm(t, y, q, delta, x0=None, max_iter=50, tol=1e-3):
 
     for iter in range(max_iter):
         I_delta, f_vals, indices = compute_I_delta(xk, t, y, q, delta)
-        save_constraints(xk, t, y, I_delta, filename=f"restrictions_iter_{iter}.json")
+        save_constraints(xk, t, y, I_delta, iter)
         d, w = solve_subproblem(xk, t, y, I_delta)
 
         xtrial = xk + d
