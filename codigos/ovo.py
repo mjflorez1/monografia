@@ -38,7 +38,7 @@ def ovo_algorithm(t,y):
     x1_bounds = [max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)]
     x2_bounds = [max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)]
     x3_bounds = [max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)]
-    x4_bounds = [max(-10 - xk[4], -deltax), min(10 - xk[4], deltax)]
+    x4_bounds = [None, 0]
 
     for i in range(m):
         faux[i] = f_i(xk,t[i],y[i])
