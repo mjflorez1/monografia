@@ -71,13 +71,21 @@ def ovo_algorithm(t,y):
     n = 5
     q = 40
 
-    xk = np.array([-1,-2,1,-1])
+    xk = np.array([-1,-2,1,-1, 0])
     faux = np.zeros(m)
     Idelta = np.zeros(m,dtype=int)
-    A = np.zeros(m,n)
+    A = np.zeros((m,n))
     b = np.zeros(m)
     c = np.zeros(n)
     c[-1] = 1
+    deltax = 1.0
+    x0_bounds = [max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)]
+    x1_bounds = [max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)]
+    x2_bounds = [max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)]
+    x3_bounds = [max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)]
+    x4_bounds = [max(-10 - xk[4], -deltax), min(10 - xk[4], deltax)]
+    #x_bounds = [[max(-10 - xk[i], -deltax), min(10 - xk[i], deltax)] for i in range(n)]
+
 
     for i in range(m):
         faux[i] = f_i(xk,t[i],y[i])
@@ -90,7 +98,7 @@ def ovo_algorithm(t,y):
 
     res = linprog(c, A_ub=A[0:nconst-1,:], b_ub=b[0:nconst-1], bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
 
-    
+    res.x
 
 data = np.loadtxt("data.txt")
 
