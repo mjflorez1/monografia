@@ -1,12 +1,15 @@
 import numpy as np
 from scipy.optimize import minimize, linprog
 
-# Modelo cúbico y funciones f_i(x)
 def model(t, x):
     return x[0] + x[1]*t + x[2]*t**2 + x[3]*t**3
 
 def f_i(x, t_i, y_i):
     return 0.5 * (model(t_i, x) - y_i)**2
+
+def grad_f_i(x, t_i, y_i):
+    diff = model(t_i, x) - y_i
+    return diff * np.array([1, t_i, t_i**2, t_i**3])
 
 def mount_Idelta(fovo,faux,indices,delta,Idelta):
     k = 0
