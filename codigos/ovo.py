@@ -17,7 +17,6 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
         if abs(fovo - faux[i]) <= delta:
             Idelta[k] = indices[i]
             k += 1
-
     return k
 
 def ovo_algorithm(t,y):
