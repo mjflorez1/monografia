@@ -67,7 +67,7 @@ def ovo_algorithm(t,y):
 
     # print(np.shape(A[0,:]),np.shape(c),np.shape(b[0:nconst]))
 
-    res = linprog(c, A_ub=A[0,:],b_ub=b[0:nconst],bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
+    res = linprog(c, A_ub=A[0:1,:],b_ub=b[0:1],bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
 
     # print(res.x)
     print(res.success)
