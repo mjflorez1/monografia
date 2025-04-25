@@ -22,7 +22,7 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     return k
 
 def ovo_algorithm(t, y):
-    p = 25
+    p = 14
     epsilon = 1e-3
     delta = 1.0
     max_iter = 100
@@ -102,16 +102,16 @@ def ovo_algorithm(t, y):
             break
         
         xk = x_new
-        print(f"Iter {iter}: f={f_new:.4f}")
-    
+        print(f"Iter {iter}: f={f_new}")
+        print(f"\nSolución final después de {iter+1} iteraciones: {xk}")    
     return xk
 
 data = np.loadtxt("data.txt")
 t = data[:, 0]
 y = data[:, 1]
 
-solucion = ovo_algorithm(t, y)
-print("\nSolución final:", solucion)
+#solucion = ovo_algorithm(t, y)
+#print("\nSolución final:", solucion)
 
 x_true = [0.0, 2.0, -3.0, 1.0]
 y_true = model(t, x_true)
