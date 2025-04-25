@@ -1,8 +1,10 @@
 import numpy as np
+import matplotlib.pyplot as plt
+plt.rcParams['text.usetex'] = True
 from scipy.optimize import linprog
 
 def model(t, x):
-    return x[0] + x[1]*t + x[2]*t**2 + x[3]*t**3
+    return x[0] + x[1] * t + x[2] * t ** 2 + x[3] * t ** 3
 
 def f_i(x, t_i, y_i):
     return 0.5 * (model(t_i, x) - y_i)**2
@@ -20,30 +22,26 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     return k
 
 def ovo_algorithm(t, y):
-    # Parámetros fijos (ajustables aquí)
-    p = 36                  # p del paper (36 = m - 10 outliers)
-    epsilon = 1e-3          # Tolerancia para I_epsilon
-    delta = 1.0             # Tamaño región de confianza
-    max_iter = 100          # Máximo de iteraciones
-    max_iter_armijo = 20    # Máximo pasos Armijo
-    theta = 0.5             # Parámetro Armijo
-    sigma_min = 0.1         # Reducción mínima alpha
-    sigma_max = 0.9         # Reducción máxima alpha
+    p = 25
+    epsilon = 1e-3
+    delta = 1.0
+    max_iter = 100
+    max_iter_armijo = 50
+    theta = 0.5
+    sigma_min = 0.1
+    sigma_max = 0.9
     
-    # Inicialización
-    q = p - 1               # Índice base 0
+    q = p - 1
     m = len(t)
-    xk = np.array([-1.0, -2.0, 1.0, -1.0])  # Punto inicial del paper
+    xk = np.array([-1.0, -2.0, 1.0, -1.0])
     print("Inicialización:", xk)
     
     for iter in range(max_iter):
-        # Paso 1: Calcular f_ovo e I_epsilon
         faux = np.array([f_i(xk, t[i], y[i]) for i in range(m)])
         indices = np.argsort(faux)
         sorted_faux = np.sort(faux)
         fovo = sorted_faux[q]
         
-        # Identificar restricciones activas
         Idelta = np.zeros(m, dtype=int)
         nconst = mount_Idelta(fovo, sorted_faux, indices, epsilon, Idelta)
         
@@ -51,29 +49,26 @@ def ovo_algorithm(t, y):
             print("Sin restricciones activas.")
             break
         
-        # Construir problema LP
-        A = np.zeros((nconst, 5))  # 4 variables + w
+        A = np.zeros((nconst, 5))
         b = np.zeros(nconst)
         c = np.zeros(5)
-        c[-1] = 1  # Minimizar w
+        c[-1] = 1
         
         for k in range(nconst):
             j = Idelta[k]
             grad = grad_f_i(xk, t[j], y[j])
             A[k, :4] = grad
-            A[k, 4] = -1.0  # Restricción: grad^T d <= w
+            A[k, 4] = -1.0
         
-        # Región de confianza (bounds)
         current_bounds = [
-            (max(-10.0 - xk[0], min(10.0 - xk[0], delta))),
-            (max(-10.0 - xk[1], min(10.0 - xk[1], delta))),
-            (max(-10.0 - xk[2], min(10.0 - xk[2], delta))),
-            (max(-10.0 - xk[3], min(10.0 - xk[3], delta))),
-            (None, 0)  # w <= 0
-        ]
-        
-        # Resolver subproblema LP
-        res = linprog(c, A_ub=A[:nconst], b_ub=b[:nconst], bounds=current_bounds, method='highs')
+            (max(-10.0 - xk[0], -delta), min(10.0 - xk[0], delta)),
+            (max(-10.0 - xk[1], -delta), min(10.0 - xk[1], delta)),
+            (max(-10.0 - xk[2], -delta), min(10.0 - xk[2], delta)),
+            (max(-10.0 - xk[3], -delta), min(10.0 - xk[3], delta)),
+            (None, 0)
+                ]
+    
+        res = linprog(c, A_ub=A[:nconst], b_ub=b[:nconst], bounds = current_bounds)
         
         if not res.success:
             print(f"Iter {iter}: LP no converge")
@@ -82,12 +77,10 @@ def ovo_algorithm(t, y):
         d = res.x[:4]
         w = res.x[4]
         
-        # Criterio de parada
         if w >= -1e-8:
             print(f"Iter {iter}: Convergencia (w={w:.3e})")
             break
         
-        # Paso 2: Búsqueda de línea de Armijo
         alpha = 1.0
         armijo_iter = 0
         sufficient_decrease = False
@@ -100,25 +93,37 @@ def ovo_algorithm(t, y):
             if f_new <= f_current + theta * alpha * w:
                 sufficient_decrease = True
                 break
-                
-            # Reducir alpha
-            alpha = alpha * np.random.uniform(sigma_min, sigma_max)
+    
+            alpha = alpha * 0.5
             armijo_iter += 1
         
         if not sufficient_decrease:
             print(f"Iter {iter}: Armijo falló")
             break
         
-        # Actualizar iterado
         xk = x_new
-        print(f"Iter {iter}: f={f_new:.4f}, ||d||={np.linalg.norm(d):.4f}, alpha={alpha:.4f}")
+        print(f"Iter {iter}: f={f_new:.4f}, ||d||={np.linalg.norm(d):.4f}")
     
     return xk
 
-# Cargar datos y ejecutar
 data = np.loadtxt("data.txt")
 t = data[:, 0]
 y = data[:, 1]
 
 solucion = ovo_algorithm(t, y)
 print("\nSolución final:", solucion)
+
+x_true = [0.0, 2.0, -3.0, 1.0]
+y_true = model(t, x_true)
+
+x_ovo = ovo_algorithm(t, y)
+y_ovo = model(t, x_ovo)
+
+plt.plot(t, y_true, 'g-', label=r'$Modelo \, verdadero$')
+plt.scatter(t, y, color='magenta',label=r'$Outliers$')
+plt.plot(t, y_ovo, 'b--', label=r'$Modelo \, OVO$')
+plt.xlabel(r"$t$")
+plt.ylabel(r"$y$")
+plt.title(r"$Comparacion$")
+plt.legend(loc = 'lower right')
+plt.show()

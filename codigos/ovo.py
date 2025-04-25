@@ -58,6 +58,6 @@ data = np.loadtxt("data.txt")
 t = data[:,0]
 y = data[:,1]
 m = len(t)
-q = 36
+#q = 35
 
 ovo_algorithm(t,y)
