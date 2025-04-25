@@ -60,7 +60,7 @@ def ovo_algorithm(t, y):
             A[k, :4] = grad
             A[k, 4] = -1.0
         
-        current_bounds = [
+        xi_bounds = [
             (max(-10.0 - xk[0], -delta), min(10.0 - xk[0], delta)),
             (max(-10.0 - xk[1], -delta), min(10.0 - xk[1], delta)),
             (max(-10.0 - xk[2], -delta), min(10.0 - xk[2], delta)),
@@ -68,7 +68,7 @@ def ovo_algorithm(t, y):
             (None, 0)
                 ]
     
-        res = linprog(c, A_ub=A[:nconst], b_ub=b[:nconst], bounds = current_bounds)
+        res = linprog(c, A_ub=A[:nconst], b_ub=b[:nconst], bounds = xi_bounds)
         
         if not res.success:
             print(f"Iter {iter}: LP no converge")
@@ -102,7 +102,7 @@ def ovo_algorithm(t, y):
             break
         
         xk = x_new
-        print(f"Iter {iter}: f={f_new:.4f}, ||d||={np.linalg.norm(d):.4f}")
+        print(f"Iter {iter}: f={f_new:.4f}")
     
     return xk
 
