@@ -22,7 +22,7 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     return k
 
 def ovo_algorithm(t, y):
-    p = 14
+    noutliers = 47
     epsilon = 1e-3
     delta = 1.0
     max_iter = 100
@@ -31,7 +31,7 @@ def ovo_algorithm(t, y):
     sigma_min = 0.1
     sigma_max = 0.9
     
-    q = p - 1
+    q = noutliers - 1
     m = len(t)
     xk = np.array([-1.0, -2.0, 1.0, -1.0])
     print("Inicialización:", xk)

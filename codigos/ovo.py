@@ -7,9 +7,15 @@ def model(t, x):
 def f_i(x, t_i, y_i):
     return 0.5 * (model(t_i, x) - y_i)**2
 
-def grad_f_i(x, t_i, y_i):
+def grad_f_i(x,t_i,y_i,grad):
     diff = model(t_i, x) - y_i
-    return diff * np.array([1, t_i, t_i**2, t_i**3])
+    
+    grad[0] = 1.
+    grad[1] = t_i
+    grad[2] = t_i**2
+    grad[3] = t_i**3
+
+    return diff * grad[:]
 
 def mount_Idelta(fovo,faux,indices,delta,Idelta):
     k = 0
@@ -30,6 +36,7 @@ def ovo_algorithm(t,y):
     xk = np.array([-1,-2,1,-1, 0])
     faux = np.zeros(m)
     Idelta = np.zeros(m,dtype=int)
+    grad = np.zeros(n-1)
     A = np.zeros((m,n))
     b = np.zeros(m)
     c = np.zeros(n)
@@ -51,7 +58,19 @@ def ovo_algorithm(t,y):
 
     nconst = mount_Idelta(fovo,faux,indices,delta,Idelta)
 
-    res = linprog(c, A_ub=A[0:nconst-1,:], b_ub=b[0:nconst-1], bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
+    ind = indices[0]
+
+    grad_f_i(xk,t[ind],y[ind],grad)
+
+    A[0,0:n-1] = grad
+    A[0,n-1] = -1
+
+    # print(np.shape(A[0,:]),np.shape(c),np.shape(b[0:nconst]))
+
+    res = linprog(c, A_ub=A[0,:],b_ub=b[0:nconst],bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
+
+    # print(res.x)
+    print(res.success)
 
 data = np.loadtxt("data.txt")
 
