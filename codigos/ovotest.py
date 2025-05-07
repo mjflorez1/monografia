@@ -15,7 +15,7 @@ def grad_f_i(x,t_i,y_i,grad):
     grad[2] = t_i**2
     grad[3] = t_i**3
 
-    return grad
+    return diff * grad[:]
 
 def mount_Idelta(fovo,faux,indices,delta,Idelta):
     k = 0
@@ -27,7 +27,7 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
 
 def ovo_algorithm(t,y):
     epsilon = 1e-3
-    delta = 1e-2
+    delta = 1e-3
     max_iter = 100
     max_iter_armijo = 1000
     n = 5
@@ -62,7 +62,7 @@ def ovo_algorithm(t,y):
         nconst = mount_Idelta(fxk,faux,indices,delta,Idelta)
 
         for i in range(nconst):
-            ind = Idelta[i]
+            ind = indices[i]
             grad_f_i(xk,t[ind],y[ind],grad[i,:])
 
             A[i,0:n-1] = grad[i,:]
@@ -71,18 +71,24 @@ def ovo_algorithm(t,y):
         res = linprog(c, A_ub=A[0:nconst,:],b_ub=b[0:nconst],bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
 
         dk = res.x
-        stop_criteria = 0
+        #stop_criteria = 0
 
         # --> Criterio de parada <--
 
-        for i in range(nconst):
-            mkd = np.dot(grad[i,:],dk[0:n-1])
-            print(mkd)
+        #for i in range(nconst):
+        #    mkd = np.dot(grad[i,:],dk[0:n-1])
 
-            if mkd >= stop_criteria: 
+        #    if mkd >= stop_criteria: 
+        #        stop_criteria = mkd
+
+        stop_criteria = np.dot(grad[0,:], dk[0:n-1])
+        for i in range(1, nconst):
+            mkd = np.dot(grad[i,:], dk[0:n-1])
+            if mkd < stop_criteria:  # buscamos el más negativo
                 stop_criteria = mkd
+            mkd = stop_criteria
 
-        if abs(mkd) < epsilon:
+        if abs(stop_criteria) < epsilon:
             break
 
         # --> Condición de descenso (Armijo) <--
@@ -96,17 +102,10 @@ def ovo_algorithm(t,y):
         indices = np.argsort(faux)
         faux = np.sort(faux)
         fxktrial = faux[q]
-
+        
         iter_armijo = 0
 
-        while fxktrial >= fxk and iter_armijo <= max_iter_armijo:
-            print("Iter Armijo:", iter_armijo)
-            print("alpha:", alpha)
-            print("fxk:", fxk)
-            print("fxktrial:", fxktrial)
-            print("theta * alpha * mkd:", theta * alpha * mkd)
-            print("Armijo RHS:", fxk + theta * alpha * mkd)
-            print("---")
+        while fxktrial > fxk + theta * alpha * stop_criteria and iter_armijo <= max_iter_armijo:
             alpha = 0.5 * alpha
 
             xktrial = xk[0:n-1] + alpha * dk[0:n-1]
