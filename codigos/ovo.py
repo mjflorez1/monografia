@@ -34,19 +34,18 @@ def model(t,x1,x2,x3,x4):
 
 # Funciones de error cuadratico
 def f_i(t_i,y_i,x):
-    return 0.5 * (model(t_i,*x) - y_i)**2
+    return 0.5 * ((model(t_i,*x) - y_i)**2)
 
 # Gradientes de las funciones de error
 def grad_f_i(t_i,y_i,x,grad):
     diff = model(t_i,*x) - y_i
     
-    grad[0] = 1.
+    grad[0] = 1
     grad[1] = t_i
     grad[2] = t_i**2
     grad[3] = t_i**3
 
     return diff * grad[:]
-
 
 # Montamos el conjundo de indices I_delta
 def mount_Idelta(fovo,faux,indices,delta,Idelta):
@@ -60,24 +59,23 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
 def ovo_algorithm(t,y):
 
     # Parametros algoritmicos
-    epsilon = 1e-3
-    delta = 1e-2
-    max_iter = 10
-    max_iter_armijo = 100
+    epsilon = 1e-4
+    delta   = 1e-2
+    deltax  = 1.0
+    theta   = 0.5
     n = 5
     q = 36
-    deltax = 1.0
-    theta = 0.5
+    max_iter = 10
+    max_iter_armijo = 100
     iter = 0
 
     # Solucion inicial
     xk = np.array([-1,-2,1,-1])
 
-    # Definicion de algunos arrays necesarios
-    faux = np.zeros(m)
-    Idelta = np.zeros(m,dtype=int)
-    grad = np.zeros((m,n-1))
-    c = np.zeros(n)
+    # Definimos algunos arrays necesarios
+    faux    = np.zeros(m)
+    Idelta  = np.zeros(m,dtype=int)
+    c       = np.zeros(n)
     xktrial = np.zeros(n-1)
 
     # La función objetivo es lineal y depende unicamente 
@@ -87,26 +85,32 @@ def ovo_algorithm(t,y):
     while True:    
 
         iter += 1
-    
+
+        # Restricciones de caja
         x0_bounds = (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax))
         x1_bounds = (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax))
         x2_bounds = (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax))
         x3_bounds = (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax))
         x4_bounds = (None, 0)
 
+        # Calculamos de las funciones de error
         for i in range(m):
             faux[i] = f_i(t[i],y[i],xk)
 
+        # Ordenamos las funciones de error y sus respectivos indices
         indices = np.argsort(faux)
         faux = np.sort(faux)
 
         # Funcion de valor ordenado
         fxk = faux[q-1]
 
+        # Computamos Idelta para saber el numero de restricciones
         nconst = mount_Idelta(fxk,faux,indices,delta,Idelta)
 
+        # Montamos la matriz de restricciones 
         A = np.zeros((nconst,n))
         b = np.zeros(nconst)
+        grad = np.zeros((nconst,n-1))
 
         for i in range(nconst):
             ind = indices[i]
@@ -129,7 +133,7 @@ def ovo_algorithm(t,y):
 
         while True:
             
-            xktrial = xk + alpha * dk[:-1]
+            xktrial = xk + (alpha * dk[:-1])
 
             for i in range(m):
                 faux[i] = f_i(t[i],y[i],xktrial)
@@ -138,14 +142,14 @@ def ovo_algorithm(t,y):
             fxktrial = faux[q-1]
             iter_armijo += 1
 
-            if fxktrial >= fxk + theta * alpha * mkd and iter_armijo < max_iter_armijo:
+            if fxktrial >= fxk + (theta * alpha * mkd) and iter_armijo < max_iter_armijo:
                 break
 
             alpha = 0.5 * alpha
 
-        xk = xktrial + alpha * dk[:-1]
+        xk = xktrial
 
-        # print(fxk,iter,iter_armijo)
+        print(fxk,iter,iter_armijo)
 
 
 
