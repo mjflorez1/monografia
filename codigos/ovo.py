@@ -118,53 +118,32 @@ def ovo_algorithm(t,y):
         res = linprog(c,A_ub=A,b_ub=b,bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
 
         dk = res.x
-
-        print(dk)
-
-        # mkd = -np.inf
-
         mkd = dk[-1]
 
-        # --> Criterio de parada <--
-
-        # for i in range(nconst):
-        #     aux = np.dot(grad[i,:],dk[0:n-1])
-        #     print(aux)
-
-        #     if aux >= mkd:
-        #         mkd = aux
-        
+        # Criterio de parada        
         if abs(mkd) < epsilon or iter >= max_iter:
             break
 
-        # --> Condición de descenso (Armijo) <--
-
-        alpha = 1
-        xktrial = xk + alpha * dk[0:n-1]
-
-        for i in range(m):
-            faux[i] = f_i(t[i],y[i],xktrial)
-
-        indices = np.argsort(faux)
-        faux = np.sort(faux)
-        fxktrial = faux[q]
-
         iter_armijo = 0
+        alpha = 1
 
-        while fxktrial >= fxk + theta * alpha * mkd and iter_armijo < max_iter_armijo:
-            alpha = 0.5 * alpha
-
-            xktrial = xk[0:n-1] + alpha * dk[0:n-1]
+        while True:
+            
+            xktrial = xk + alpha * dk[:-1]
 
             for i in range(m):
                 faux[i] = f_i(t[i],y[i],xktrial)
 
-            indices = np.argsort(faux)
             faux = np.sort(faux)
-            fxktrial = faux[q]
+            fxktrial = faux[q-1]
             iter_armijo += 1
 
-        xk = xk + alpha * dk[:-1]
+            if fxktrial >= fxk + theta * alpha * mkd and iter_armijo < max_iter_armijo:
+                break
+
+            alpha = 0.5 * alpha
+
+        xk = xktrial + alpha * dk[:-1]
 
         # print(fxk,iter,iter_armijo)
 
