@@ -30,22 +30,25 @@ from scipy.optimize import linprog
 
 # Definición del modelo cubico
 def model(t,x1,x2,x3,x4):
-    return x1 + (x2 * t) + (x3 * t)**2 + (x4 * t)**3
+    res = x1 + (x2 * t) + x3 * (t**2) + x4 * (t**3)
+    return res
 
 # Funciones de error cuadratico
 def f_i(t_i,y_i,x):
-    return 0.5 * ((model(t_i,*x) - y_i)**2)
+    res = 0.5 * ((model(t_i,*x) - y_i)**2)
+
+    return res
 
 # Gradientes de las funciones de error
 def grad_f_i(t_i,y_i,x,grad):
     diff = model(t_i,*x) - y_i
     
-    grad[0] = 1
-    grad[1] = t_i
-    grad[2] = t_i**2
-    grad[3] = t_i**3
+    grad[0] = diff * 1
+    grad[1] = diff * t_i
+    grad[2] = diff * t_i**2
+    grad[3] = diff * t_i**3
 
-    return diff * grad[:]
+    return grad[:]
 
 # Montamos el conjundo de indices I_delta
 def mount_Idelta(fovo,faux,indices,delta,Idelta):
@@ -60,31 +63,30 @@ def ovo_algorithm(t,y):
 
     # Parametros algoritmicos
     epsilon = 1e-4
-    delta   = 1e-2
+    delta   = 1e-3
     deltax  = 1.0
     theta   = 0.5
     n = 5
-    q = 36
-    max_iter = 10
+    q = 35
+    max_iter = 100
     max_iter_armijo = 100
-    iter = 0
+    iter = 1
 
     # Solucion inicial
     xk = np.array([-1,-2,1,-1])
 
     # Definimos algunos arrays necesarios
+    xktrial = np.zeros(n-1)
     faux    = np.zeros(m)
     Idelta  = np.zeros(m,dtype=int)
-    c       = np.zeros(n)
-    xktrial = np.zeros(n-1)
 
     # La función objetivo es lineal y depende unicamente 
     # de la variable artificial
+    c = np.zeros(n)
     c[-1] = 1
 
-    while True:    
 
-        iter += 1
+    while iter <= max_iter:    
 
         # Restricciones de caja
         x0_bounds = (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax))
@@ -101,8 +103,8 @@ def ovo_algorithm(t,y):
         indices = np.argsort(faux)
         faux = np.sort(faux)
 
-        # Funcion de valor ordenado
-        fxk = faux[q-1]
+        # Funcion de valor ordenado de orden q
+        fxk = faux[q]
 
         # Computamos Idelta para saber el numero de restricciones
         nconst = mount_Idelta(fxk,faux,indices,delta,Idelta)
@@ -113,7 +115,7 @@ def ovo_algorithm(t,y):
         grad = np.zeros((nconst,n-1))
 
         for i in range(nconst):
-            ind = indices[i]
+            ind = Idelta[i]
             grad_f_i(t[ind],y[ind],xk,grad[i,:])
 
             A[i,:-1] = grad[i,:]
@@ -121,17 +123,20 @@ def ovo_algorithm(t,y):
 
         res = linprog(c,A_ub=A,b_ub=b,bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
 
+        # Solucion del subproblema convexo
         dk = res.x
         mkd = dk[-1]
 
         # Criterio de parada        
-        if abs(mkd) < epsilon or iter >= max_iter:
+        if abs(mkd) < epsilon:
             break
 
         iter_armijo = 0
         alpha = 1
 
         while True:
+
+            iter_armijo += 1
             
             xktrial = xk + (alpha * dk[:-1])
 
@@ -139,19 +144,19 @@ def ovo_algorithm(t,y):
                 faux[i] = f_i(t[i],y[i],xktrial)
 
             faux = np.sort(faux)
-            fxktrial = faux[q-1]
-            iter_armijo += 1
+            fxktrial = faux[q]
 
-            if fxktrial >= fxk + (theta * alpha * mkd) and iter_armijo < max_iter_armijo:
+            if fxktrial < fxk + (theta * alpha * mkd) or iter_armijo >= max_iter_armijo:
                 break
 
             alpha = 0.5 * alpha
 
         xk = xktrial
+        iter += 1
 
         print(fxk,iter,iter_armijo)
 
-
+    print(xk)
 
 data = np.loadtxt("data.txt")
 

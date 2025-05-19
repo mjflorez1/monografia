@@ -6,7 +6,7 @@ def model(t,x1,x2,x3,x4):
     return x1 + x2 * t + x3 * t**2 + x4 * t**3
 
 #Definimos los valores de t_i (de 1 a 46)
-m = 47
+m = 46
 t = np.linspace(-1,3.5,m)
 xstar = np.array([0, 2, -3, 1])
 
