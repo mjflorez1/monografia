@@ -20,6 +20,7 @@ Implementación en Python realizada por:
 
 Orientador:
   Dr. Gustavo Quintero  
+  Email: gdquintero@uniatlantico.edu.co
   Tutor de la monografía de grado  
   Universidad del Atlántico
 """
@@ -62,13 +63,13 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
 def ovo_algorithm(t,y):
 
     # Parametros algoritmicos
-    epsilon = 1e-4
+    epsilon = 1e-8
     delta   = 1e-3
     deltax  = 1.0
     theta   = 0.5
     n = 5
     q = 35
-    max_iter = 100
+    max_iter = 1000
     max_iter_armijo = 100
     iter = 1
 
@@ -87,6 +88,8 @@ def ovo_algorithm(t,y):
 
 
     while iter <= max_iter:    
+
+        iter_armijo = 0
 
         # Restricciones de caja
         x0_bounds = (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax))
@@ -127,14 +130,15 @@ def ovo_algorithm(t,y):
         dk = res.x
         mkd = dk[-1]
 
+        print(fxk,mkd,iter,iter_armijo)
+
         # Criterio de parada        
         if abs(mkd) < epsilon:
             break
 
-        iter_armijo = 0
         alpha = 1
 
-        while True:
+        while iter_armijo <= max_iter_armijo:
 
             iter_armijo += 1
             
@@ -146,15 +150,13 @@ def ovo_algorithm(t,y):
             faux = np.sort(faux)
             fxktrial = faux[q]
 
-            if fxktrial < fxk + (theta * alpha * mkd) or iter_armijo >= max_iter_armijo:
+            if fxktrial < fxk + (theta * alpha * mkd):
                 break
 
             alpha = 0.5 * alpha
 
         xk = xktrial
         iter += 1
-
-        print(fxk,iter,iter_armijo)
 
     print(xk)
 
