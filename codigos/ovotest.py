@@ -1,3 +1,31 @@
+"""
+Algoritmo de Optimización por Valor de Orden (OVO) – Método tipo Cauchy
+------------------------------------------------------------------------
+Esta implementación está basada en el artículo:
+
+  Roberto Andreani, Cibele Dunder, José Mario Martínez.
+  "Order-Value Optimization: Formulation and solution by means of a primal cauchy method".
+  IMECC-UNICAMP e IME-USP, Brasil, 2003.
+
+Resumen:
+  Este código implementa un método iterativo para resolver el problema de Optimización por Valor de Orden (OVO),
+  una generalización del problema clásico de Minimax. El objetivo es minimizar el valor funcional que ocupa la 
+  posición p-ésima dentro de un conjunto dado de funciones. Se utiliza un método tipo Cauchy que garantiza 
+  convergencia a puntos que satisfacen condiciones de optimalidad adecuadas, incluso en presencia de outliers.
+
+Implementación en Python realizada por:
+  Mateo Flores  
+  Estudiante del programa de Matemáticas  
+  Universidad del Atlántico
+
+Orientador:
+  Dr. Gustavo Quintero  
+  Email: gdquintero@uniatlantico.edu.co
+  Tutor de la monografía de grado  
+  Universidad del Atlántico
+"""
+
+# Bibliotecas esenciales
 import numpy as np
 from scipy.optimize import linprog
 
@@ -32,7 +60,7 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
             k += 1
     return k
 
-def ovo_algorithm(t,y,q):
+def ovo_algorithm(t,y):
 
     # Parametros algoritmicos
     epsilon = 1e-8
@@ -129,6 +157,10 @@ def ovo_algorithm(t,y,q):
 
         xk = xktrial
         iter += 1
+        
+        with open("tabla_resultados.txt", "w") as f:
+            for p in range(27):
+                f.write(f"{p} {fxk:.8f}\n")
 
     print(xk)
 
@@ -138,13 +170,4 @@ t = data[:,0]
 y = data[:,1]
 m = len(t)
 
-ovo_algorithm(t,y,q)
-
-with open("resultados_ovo.txt", "w") as f:
-    f.write(f"{'p':>4} {'x1':>10} {'x2':>10} {'x3':>10} {'x4':>10} {'fobj':>10} {'n.iter':>8}\n")
-    for p in range(20, 44):
-        q = p - 1
-        xk, fxk, iters = ovo_algorithm(t, y, q)
-        f.write(f"{p:4d} {xk[0]:10.4f} {xk[1]:10.4f} {xk[2]:10.4f} {xk[3]:10.4f} {fxk:10.4f} {iters:8d}\n")
-
-print("Tabla de resultados guardada en 'resultados_ovo.txt'")
+ovo_algorithm(t,y)
