@@ -157,12 +157,12 @@ def ovo_algorithm(t,y):
 
         xk = xktrial
         iter += 1
-        
-        with open("tabla_resultados.txt", "w") as f:
-            for p in range(27):
-                f.write(f"{p} {fxk:.8f}\n")
 
     print(xk)
+    
+    with open("tabla_resultados.txt", "w") as f:
+        for p in range(27):
+            f.write(f"{p} {fxk:.8f} {iter}\n")
 
 data = np.loadtxt("data.txt")
 
