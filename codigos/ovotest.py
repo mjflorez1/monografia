@@ -1,58 +1,25 @@
-"""
-Algoritmo de Optimización por Valor de Orden (OVO) – Método tipo Cauchy
-------------------------------------------------------------------------
-Esta implementación está basada en el artículo:
-
-  Roberto Andreani, Cibele Dunder, José Mario Martínez.
-  "Order-Value Optimization: Formulation and solution by means of a primal cauchy method".
-  IMECC-UNICAMP e IME-USP, Brasil, 2003.
-
-Resumen:
-  Este código implementa un método iterativo para resolver el problema de Optimización por Valor de Orden (OVO),
-  una generalización del problema clásico de Minimax. El objetivo es minimizar el valor funcional que ocupa la 
-  posición p-ésima dentro de un conjunto dado de funciones. Se utiliza un método tipo Cauchy que garantiza 
-  convergencia a puntos que satisfacen condiciones de optimalidad adecuadas, incluso en presencia de outliers.
-
-Implementación en Python realizada por:
-  Mateo Flores  
-  Estudiante del programa de Matemáticas  
-  Universidad del Atlántico
-
-Orientador:
-  Dr. Gustavo Quintero  
-  Email: gdquintero@uniatlantico.edu.co
-  Tutor de la monografía de grado  
-  Universidad del Atlántico
-"""
-
-# Bibliotecas esenciales
 import numpy as np
 from scipy.optimize import linprog
 
-# Definición del modelo cubico
+# Modelo cúbico
 def model(t,x1,x2,x3,x4):
-    res = x1 + (x2 * t) + x3 * (t**2) + x4 * (t**3)
-    return res
+    return x1 + x2*t + x3*t**2 + x4*t**3
 
-# Funciones de error cuadratico
-def f_i(t_i,y_i,x):
-    res = 0.5 * ((model(t_i,*x) - y_i)**2)
+# Error cuadrático
+def f_i(t_i, y_i, x):
+    return 0.5 * (model(t_i, *x) - y_i)**2
 
-    return res
-
-# Gradientes de las funciones de error
-def grad_f_i(t_i,y_i,x,grad):
-    diff = model(t_i,*x) - y_i
-    
-    grad[0] = diff * 1
+# Gradiente del error
+def grad_f_i(t_i, y_i, x, grad):
+    diff = model(t_i, *x) - y_i
+    grad[0] = diff
     grad[1] = diff * t_i
     grad[2] = diff * t_i**2
     grad[3] = diff * t_i**3
+    return grad
 
-    return grad[:]
-
-# Montamos el conjundo de indices I_delta
-def mount_Idelta(fovo,faux,indices,delta,Idelta):
+# Construye I_delta
+def mount_Idelta(fovo, faux, indices, delta, Idelta):
     k = 0
     for i in range(m):
         if abs(fovo - faux[i]) <= delta:
@@ -60,114 +27,92 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
             k += 1
     return k
 
-def ovo_algorithm(t,y):
-
-    # Parametros algoritmicos
+# Algoritmo OVO
+def ovo_algorithm(t, y, q):
     epsilon = 1e-8
-    delta   = 1e-3
-    deltax  = 1.0
-    theta   = 0.5
+    delta = 1e-3
+    deltax = 1.0
+    theta = 0.5
     n = 5
-    q = 35
     max_iter = 1000
     max_iter_armijo = 100
     iter = 1
 
-    # Solucion inicial
-    xk = np.array([-1,-2,1,-1])
-
-    # Definimos algunos arrays necesarios
-    xktrial = np.zeros(n-1)
-    faux    = np.zeros(m)
-    Idelta  = np.zeros(m,dtype=int)
-
-    # La función objetivo es lineal y depende unicamente 
-    # de la variable artificial
+    xk = np.array([-1, -2, 1, -1])
+    xktrial = np.zeros(n - 1)
+    faux = np.zeros(m)
+    Idelta = np.zeros(m, dtype=int)
     c = np.zeros(n)
     c[-1] = 1
 
-
-    while iter <= max_iter:    
-
+    while iter <= max_iter:
         iter_armijo = 0
 
-        # Restricciones de caja
-        x0_bounds = (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax))
-        x1_bounds = (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax))
-        x2_bounds = (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax))
-        x3_bounds = (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax))
-        x4_bounds = (None, 0)
+        bounds = [
+            (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
+            (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)),
+            (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)),
+            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
+            (None, 0)
+        ]
 
-        # Calculamos de las funciones de error
         for i in range(m):
-            faux[i] = f_i(t[i],y[i],xk)
+            faux[i] = f_i(t[i], y[i], xk)
 
-        # Ordenamos las funciones de error y sus respectivos indices
         indices = np.argsort(faux)
         faux = np.sort(faux)
-
-        # Funcion de valor ordenado de orden q
         fxk = faux[q]
+        nconst = mount_Idelta(fxk, faux, indices, delta, Idelta)
 
-        # Computamos Idelta para saber el numero de restricciones
-        nconst = mount_Idelta(fxk,faux,indices,delta,Idelta)
-
-        # Montamos la matriz de restricciones 
-        A = np.zeros((nconst,n))
+        A = np.zeros((nconst, n))
         b = np.zeros(nconst)
-        grad = np.zeros((nconst,n-1))
+        grad = np.zeros((nconst, n - 1))
 
         for i in range(nconst):
             ind = Idelta[i]
-            grad_f_i(t[ind],y[ind],xk,grad[i,:])
+            grad_f_i(t[ind], y[ind], xk, grad[i, :])
+            A[i, :-1] = grad[i, :]
+            A[i, -1] = -1
 
-            A[i,:-1] = grad[i,:]
-            A[i,-1] = -1
+        res = linprog(c, A_ub=A, b_ub=b, bounds=bounds)
 
-        res = linprog(c,A_ub=A,b_ub=b,bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds])
-
-        # Solucion del subproblema convexo
         dk = res.x
         mkd = dk[-1]
 
-        print(fxk,mkd,iter,iter_armijo)
-
-        # Criterio de parada        
         if abs(mkd) < epsilon:
             break
 
         alpha = 1
-
         while iter_armijo <= max_iter_armijo:
-
             iter_armijo += 1
-            
-            xktrial = xk + (alpha * dk[:-1])
-
+            xktrial = xk + alpha * dk[:-1]
             for i in range(m):
-                faux[i] = f_i(t[i],y[i],xktrial)
-
+                faux[i] = f_i(t[i], y[i], xktrial)
             faux = np.sort(faux)
             fxktrial = faux[q]
-
-            if fxktrial < fxk + (theta * alpha * mkd):
+            if fxktrial < fxk + theta * alpha * mkd:
                 break
-
-            alpha = 0.5 * alpha
+            alpha *= 0.5
 
         xk = xktrial
         iter += 1
 
-    print(xk)
-    
-    with open("tabla_resultados.txt", "w") as f:
-        for p in range(27):
-            f.write(f"{p} {fxk:.8f} {iter}\n")
+    for i in range(m):
+        faux[i] = f_i(t[i], y[i], xk)
+    fxk = np.sort(faux)[q]
+    return q, *xk, fxk, iter
 
+# Cargar datos
 data = np.loadtxt("data.txt")
-
-t = data[:,0]
-y = data[:,1]
+t = data[:, 0]
+y = data[:, 1]
 m = len(t)
 
-ovo_algorithm(t,y)
+# Ejecutar para p = 0 a 26
+resultados = [ovo_algorithm(t, y, p) for p in range(20,44)]
+
+# Guardar en archivo .txt (versión simplificada)
+with open("resultados_ovo.txt", "w") as f:
+    f.write(f"{'p':>2} | {'x1':>15} {'x2':>15} {'x3':>15} {'x4':>15} | {'fobj':>15} | {'iters':>5}\n")
+    for p, x1, x2, x3, x4, fobj, iters in resultados:
+        f.write(f"{p:2d} | {x1:15.6f} {x2:15.6f} {x3:15.6f} {x4:15.6f} | {fobj:15.6f} | {iters:5d}\n")
