@@ -91,6 +91,10 @@ def ovo_algorithm(t, y, q):
 
         xk = xktrial
         iter += 1
+        
+        for i in range(m):
+            faux[i] = f_i(t[i],y[i],xk)
+            fxk = np.sort(faux)[q]
 
     for i in range(m):
         faux[i] = f_i(t[i], y[i], xk)
