@@ -1,15 +1,12 @@
 import numpy as np
 from scipy.optimize import linprog
 
-# Modelo cúbico
 def model(t,x1,x2,x3,x4):
     return x1 + x2*t + x3*t**2 + x4*t**3
 
-# Error cuadrático
 def f_i(t_i, y_i, x):
     return 0.5 * (model(t_i, *x) - y_i)**2
 
-# Gradiente del error
 def grad_f_i(t_i, y_i, x, grad):
     diff = model(t_i, *x) - y_i
     grad[0] = diff
@@ -18,7 +15,6 @@ def grad_f_i(t_i, y_i, x, grad):
     grad[3] = diff * t_i**3
     return grad
 
-# Construye I_delta
 def mount_Idelta(fovo, faux, indices, delta, Idelta):
     k = 0
     for i in range(m):
@@ -27,7 +23,6 @@ def mount_Idelta(fovo, faux, indices, delta, Idelta):
             k += 1
     return k
 
-# Algoritmo OVO
 def ovo_algorithm(t, y, q):
     epsilon = 1e-8
     delta = 1e-3
@@ -102,16 +97,13 @@ def ovo_algorithm(t, y, q):
     fxk = np.sort(faux)[q]
     return q, *xk, fxk, iter
 
-# Cargar datos
 data = np.loadtxt("data.txt")
 t = data[:, 0]
 y = data[:, 1]
 m = len(t)
 
-# Ejecutar para p = 0 a 26
 resultados = [ovo_algorithm(t, y, p) for p in range(20,44)]
 
-# Guardar en archivo .txt (versión simplificada)
 with open("resultados_ovo.txt", "w") as f:
     f.write(f"{'p':>2} | {'x1':>15} {'x2':>15} {'x3':>15} {'x4':>15} | {'fobj':>15} | {'iters':>5}\n")
     for p, x1, x2, x3, x4, fobj, iters in resultados:
