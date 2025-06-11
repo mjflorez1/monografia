@@ -48,6 +48,9 @@ def hess_f_i(t_i,y_i,x,H):
     H[3,3] = a3 * a3
     return H[:]
 
+hess_f_i(t_i,y_i,x,H)
+autovalores = np.linalg.eig(H[:])
+
 # Montamos el conjundo de indices I_delta
 def mount_Idelta(fovo,faux,indices,delta,Idelta):
     k = 0
@@ -81,3 +84,5 @@ data = np.loadtxt("data.txt")
 t = data[:,0]
 y = data[:,1]
 m = len(t)
+
+ovo_newton(t,y)
