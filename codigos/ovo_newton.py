@@ -1,4 +1,4 @@
-# Biblio ¿tecas importantes
+# Bibliotecas importantes
 import numpy as np
 
 # Definicion del modelo cubico
