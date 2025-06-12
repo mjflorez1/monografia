@@ -21,35 +21,13 @@ def grad_f_i(t_i,y_i,x,grad):
     return grad[:]
 
 # Hessiana de las funciones de error
-def hess_f_i(t_i,y_i,x,H):
-    a0 = 1
-    a1 = t_i
-    a2 = t_i**2
-    a3 = t_i**3
-
-    H[0,0] = a0 * a0
-    H[0,1] = a0 * a1
-    H[0,2] = a0 * a2
-    H[0,3] = a0 * a3
-
-    H[1,0] = H[0,1]
-    H[1,1] = a1 * a1
-    H[1,2] = a1 * a2
-    H[1,3] = a1 * a3
-
-    H[2,0] = H[0,2]
-    H[2,1] = H[1,2]
-    H[2,2] = a2 * a2
-    H[2,3] = a2 * a3
-
-    H[3,0] = H[0,3]
-    H[3,1] = H[1,3]
-    H[3,2] = H[2,3]
-    H[3,3] = a3 * a3
+def hess_f_i(t_i, y_i, x, H):
+    a = [1, t_i, t_i**2, t_i**3]
+    for i in range(4):
+        for j in range(i, 4):
+            H[i, j] = a[i] * a[j]
+            H[j, i] = H[i, j]
     return H[:]
-
-hess_f_i(t_i,y_i,x,H)
-autovalores = np.linalg.eig(H[:])
 
 # Montamos el conjundo de indices I_delta
 def mount_Idelta(fovo,faux,indices,delta,Idelta):
@@ -59,6 +37,14 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
             Idelta[k] = indices[i]
             k += 1
     return k
+
+# Computamos Bkj con ajuste de autovalores
+def compute_Bkj(H, epsilon):
+    eigvals = np.linalg.eigvals(H)
+    lambda_min = np.min(eigvals)
+    ajuste = max(0, -lambda_min + 1e-8)
+    Bkj = H + ajuste * np.eye(H.shape[0])
+    return Bkj
 
 def ovo_newton(t,y):
     # Parametros algoritmicos
@@ -79,6 +65,8 @@ def ovo_newton(t,y):
     xktrial = np.zeros(n-1)
     faux    = np.zeros(m)
     Idelta  = np.zeros(m,dtype=int)
+    grad    = np.zeros(n-1)
+    Htemp   = np.zeros((n-1, n-1))
 
 data = np.loadtxt("data.txt")
 t = data[:,0]
