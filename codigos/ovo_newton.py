@@ -30,7 +30,7 @@ def hess_f_i(t_i, y_i, x, H):
     return H[:]
 
 # Montamos el conjundo de indices I_delta
-def mount_Idelta(fovo,faux,indices,delta,Idelta):
+def mount_Idelta(fovo,faux,indices,delta,Idelta,m):
     k = 0
     for i in range(m):
         if abs(fovo - faux[i]) <= delta:
@@ -40,10 +40,10 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta):
 
 # Computamos Bkj con ajuste de autovalores
 def compute_Bkj(H, epsilon):
-    eigvals = np.linalg.eigvals(H)
+    eigvals = np.linalg.eigvalsh(H)  # Usar eigh para matrices simétricas
     lambda_min = np.min(eigvals)
-    ajuste = max(0, -lambda_min + 1e-8)
-    Bkj = H + ajuste * np.eye(H.shape[0])
+    ajuste = max(0, -lambda_min + epsilon)
+    Bkj =H + ajuste * np.eye(H.shape[0])
     return Bkj
 
 def ovo_newton(t,y):
@@ -67,6 +67,82 @@ def ovo_newton(t,y):
     Idelta  = np.zeros(m,dtype=int)
     grad    = np.zeros(n-1)
     Htemp   = np.zeros((n-1, n-1))
+    
+    while iter <= max_iter:
+        # Evaluar funciones
+        for i in range(m):
+            faux[i] = f_i(t[i], y[i], xk)
+
+        # Ordenar por valores crecientes
+        indices = np.argsort(faux)
+        faux = np.sort(faux)
+        fxk = faux[q]
+
+        # Construir I_delta
+        nconst = mount_Idelta(fxk, faux, indices, delta, Idelta,m)
+
+        # Matrices de gradientes y Hessianas
+        A = np.zeros((nconst, n))
+        b = np.zeros(nconst)
+        G = np.zeros((nconst, n-1))
+        
+        for i in range(nconst):
+            idx = Idelta[i]
+            grad_f_i(t[idx], y[idx], xk, grad)
+            A[i, :-1] = grad[:]
+            A[i, -1] = -1
+            G[i, :] = grad[:]
+
+        # Hessiana promedio
+        H_prom = np.zeros((n-1, n-1))
+        for i in range(nconst):
+            idx = Idelta[i]
+            hess_f_i(t[idx], y[idx], xk, Htemp)
+            H_prom += Htemp
+        H_prom /= nconst
+
+        # Calcular Bk con autovalores
+        Bk = compute_Bkj(H_prom, epsilon)
+
+        # Selección de gradiente "peor"
+        Mkdk = np.inf
+        for i in range(nconst):
+            g = G[i, :]
+            dtemp = -np.linalg.solve(Bk, g)
+            mk_i = np.dot(g, dtemp) + 0.5 * np.dot(dtemp, Bk @ dtemp)
+            if mk_i < Mkdk:  # Buscamos la MAYOR reducción
+                Mkdk = mk_i
+                gsel = g.copy()
+                jsel = Idelta[i]
+
+        # Dirección de descenso
+        dk = -np.linalg.solve(Bk, gsel)
+        
+        # Búsqueda tipo Armijo
+        alpha = 1.0
+        fxo = np.sort([f_i(t[i], y[i], xk) for i in range(m)])[q]  # Valor OVO actual
+
+        for j in range(max_iter_armijo):
+            xtrial = xk + alpha * dk
+            # Calcular NUEVO valor OVO
+            fxtrial = np.sort([f_i(t[i], y[i], xtrial) for i in range(m)])[q]
+            
+            # Condición de Armijo para el valor OVO
+            if fxtrial <= fxo + theta * alpha * Mkdk:
+                break
+            alpha *= 0.5
+
+        # Criterio de parada (ya se calculó fxtrial)
+        print(fxk, Mkdk, iter, max_iter_armijo)
+        if np.linalg.norm(dk) < epsilon or np.abs(fxk - fxtrial) < epsilon:
+            break
+
+
+        # Actualizar iterado
+        xk = xk + alpha * dk
+        iter += 1
+        
+    print(xk)
 
 data = np.loadtxt("data.txt")
 t = data[:,0]

@@ -155,7 +155,7 @@ def ovo_algorithm(t,y):
 
             alpha = 0.5 * alpha
 
-        xk = xktrial
+        xk = xk + alpha * dk
         iter += 1
 
     print(xk)
