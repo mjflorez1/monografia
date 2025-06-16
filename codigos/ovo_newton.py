@@ -137,7 +137,6 @@ def ovo_newton(t,y):
         if np.linalg.norm(dk) < epsilon or np.abs(fxk - fxtrial) < epsilon:
             break
 
-
         # Actualizacion iterado
         xk = xk + alpha * dk
         iter += 1
