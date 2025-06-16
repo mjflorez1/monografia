@@ -40,10 +40,10 @@ def mount_Idelta(fovo,faux,indices,delta,Idelta,m):
 
 # Computamos Bkj con ajuste de autovalores
 def compute_Bkj(H, epsilon):
-    eigvals = np.linalg.eigvalsh(H)  # Usar eigh para matrices simétricas
+    eigvals = np.linalg.eigvalsh(H)
     lambda_min = np.min(eigvals)
     ajuste = max(0, -lambda_min + epsilon)
-    Bkj =H + ajuste * np.eye(H.shape[0])
+    Bkj = H + ajuste * np.eye(H.shape[0])
     return Bkj
 
 def ovo_newton(t,y):
@@ -120,7 +120,7 @@ def ovo_newton(t,y):
         
         # Búsqueda tipo Armijo
         alpha = 1.0
-        fxo = np.sort([f_i(t[i], y[i], xk) for i in range(m)])[q]  # Valor OVO actual
+        fxo = np.sort([f_i(t[i], y[i], xk) for i in range(m)])[q]
 
         for j in range(max_iter_armijo):
             xtrial = xk + alpha * dk
@@ -132,13 +132,13 @@ def ovo_newton(t,y):
                 break
             alpha *= 0.5
 
-        # Criterio de parada (ya se calculó fxtrial)
+        # Criterio de parada
         print(fxk, Mkdk, iter, max_iter_armijo)
         if np.linalg.norm(dk) < epsilon or np.abs(fxk - fxtrial) < epsilon:
             break
 
 
-        # Actualizar iterado
+        # Actualizacion iterado
         xk = xk + alpha * dk
         iter += 1
         
