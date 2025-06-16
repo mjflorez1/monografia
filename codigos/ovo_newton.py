@@ -48,7 +48,6 @@ def compute_Bkj(H, epsilon):
 
 hess = np.ones((4,4))
 hess_f_i(0.5,hess)
-
 print(hess)
 
 
