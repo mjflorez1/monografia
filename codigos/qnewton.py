@@ -1,19 +1,20 @@
-# Bibliotecas importantes
+# Bibliotecas esenciales
 import numpy as np
+from scipy.optimize import minimize
 
-# Definicion del modelo cubico
+# Definición del modelo cubico
 def model(t,x1,x2,x3,x4):
     res = x1 + (x2 * t) + x3 * (t**2) + x4 * (t**3)
     return res
 
 # Funciones de error cuadratico
 def f_i(t_i,y_i,x):
-    res = 0.5 * ((model(t_i,*x) - y_i)**2)
+    res = 0.5 * ((model(t_i,*x[:4]) - y_i)**2)
     return res
 
 # Gradientes de las funciones de error
 def grad_f_i(t_i,y_i,x,grad):
-    diff = model(t_i,*x) - y_i
+    diff = model(t_i,*x[:4]) - y_i
     grad[0] = diff * 1
     grad[1] = diff * t_i
     grad[2] = diff * t_i**2
@@ -21,16 +22,15 @@ def grad_f_i(t_i,y_i,x,grad):
     return grad[:]
 
 # Hessiana de las funciones de error
-def hess_f_i(t_i, y_i, x, H):
-    a = [1, t_i, t_i**2, t_i**3]
-    for i in range(4):
-        for j in range(i, 4):
-            H[i, j] = a[i] * a[j]
-            H[j, i] = H[i, j]
-    return H[:]
+def hess_f_i(ti, H):
+    H[0:] = [ti**(k - 1) for k in range(1,5)]
+    H[1:] = [ti**k for k in range(1,5)]
+    H[2:] = [ti**(k + 1) for k in range(1,5)]
+    H[3:] = [ti**(k + 2) for k in range(1,5)]
+    return H
 
 # Montamos el conjundo de indices I_delta
-def mount_Idelta(fovo,faux,indices,delta,Idelta,m):
+def mount_Idelta(fovo,faux,indices,delta,Idelta):
     k = 0
     for i in range(m):
         if abs(fovo - faux[i]) <= delta:
@@ -46,36 +46,8 @@ def compute_Bkj(H, epsilon):
     Bkj = H + ajuste * np.eye(H.shape[0])
     return Bkj
 
-# Resolver el subproblema cuadrático de manera más simple y efectiva
-def solve_quadratic_subproblem(G, Bk, deltax):
-    """
-    Resuelve el subproblema usando la estrategia del gradiente promedio
-    con información de segunda derivada (Hessiana)
-    """
-    nconst, n = G.shape
-    
-    # Calcular gradiente promedio ponderado
-    grad_avg = np.mean(G, axis=0)
-    
-    # Dirección de Newton con el gradiente promedio
-    try:
-        d = -np.linalg.solve(Bk, grad_avg)
-    except np.linalg.LinAlgError:
-        # Si la matriz no es invertible, usar descenso de gradiente
-        d = -grad_avg
-    
-    # Proyectar a las restricciones de caja
-    d_proj = np.zeros_like(d)
-    for j in range(len(d)):
-        d_proj[j] = np.clip(d[j], -deltax, deltax)
-    
-    # Calcular el valor del modelo (debe ser negativo para descenso)
-    mkd = np.dot(grad_avg, d_proj) + 0.5 * np.dot(d_proj, Bk @ d_proj)
-    
-    return d_proj, mkd
-
 def ovo_newton(t,y):
-    # Parametros algoritmicos (iguales al código con linprog)
+    # Parametros algoritmicos
     epsilon = 1e-8
     delta   = 1e-3
     deltax  = 1.0
@@ -85,116 +57,91 @@ def ovo_newton(t,y):
     max_iter = 1000
     max_iter_armijo = 100
     iter = 1
-    
-    # Solucion inicial (igual al código con linprog)
-    xk = np.array([-1,-2,1,-1])
-    
+
+    # Solucion inicial
+    xk = np.array([-1,-2,1,-1,0])
+
     # Definimos algunos arrays necesarios
-    xktrial = np.zeros(n-1)
+    xktrial = np.zeros(n)
     faux    = np.zeros(m)
     Idelta  = np.zeros(m,dtype=int)
-    grad    = np.zeros(n-1)
-    Htemp   = np.zeros((n-1, n-1))
-    
-    while iter <= max_iter:
-        
-        iter_armijo = 0
-        
-        # Evaluar funciones (igual al código con linprog)
-        for i in range(m):
-            faux[i] = f_i(t[i], y[i], xk)
 
-        # Ordenar por valores crecientes (igual al código con linprog)
+    # La función objetivo es lineal y depende unicamente 
+    # de la variable artificial
+    c = np.zeros(n)
+    c[-1] = 1
+
+
+    while iter <= max_iter:    
+
+        iter_armijo = 0
+
+        # Restricciones de caja
+        x0_bounds = (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax))
+        x1_bounds = (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax))
+        x2_bounds = (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax))
+        x3_bounds = (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax))
+        x4_bounds = (None, 0)
+
+        # Calculamos de las funciones de error
+        for i in range(m):
+            faux[i] = f_i(t[i],y[i],xk)
+
+        # Ordenamos las funciones de error y sus respectivos indices
         indices = np.argsort(faux)
         faux = np.sort(faux)
+
+        # Funcion de valor ordenado de orden q
         fxk = faux[q]
 
-        # Construir I_delta (igual al código con linprog)
-        nconst = mount_Idelta(fxk, faux, indices, delta, Idelta, m)
-        
-        if nconst == 0:
-            print("No hay restricciones activas")
-            break
+        # Computamos Idelta para saber el numero de restricciones
+        nconst = mount_Idelta(fxk,faux,indices,delta,Idelta)
 
-        # Construir matriz de gradientes (igual al código con linprog)
-        G = np.zeros((nconst, n-1))
+        # Montamos la matriz de restricciones 
+        A = np.zeros((nconst,n))
+        b = np.zeros(nconst)
+        grad = np.zeros((nconst,n-1))
+
         for i in range(nconst):
             ind = Idelta[i]
-            grad_f_i(t[ind], y[ind], xk, grad)
-            G[i, :] = grad[:]
-
-        # Hessiana promedio del conjunto activo
-        H_prom = np.zeros((n-1, n-1))
-        for i in range(nconst):
-            idx = Idelta[i]
-            hess_f_i(t[idx], y[idx], xk, Htemp)
-            H_prom += Htemp
-        H_prom /= nconst
-
-        # Calcular Bk con ajuste de autovalores
-        Bk = compute_Bkj(H_prom, epsilon)
-
-        # Resolver subproblema cuadrático (equivalente al linprog)
-        dk, mkd = solve_quadratic_subproblem(G, Bk, deltax)
+            grad_f_i(t[ind],y[ind],xk,grad[i,:])
+            A[i,:-1] = grad[i,:]
+            A[i,-1] = -1
         
-        # Si no hay descenso, probar con gradiente de máxima norma
-        if mkd >= 0:
-            # Encontrar el gradiente con mayor norma
-            max_norm = 0
-            best_grad_idx = 0
-            for i in range(nconst):
-                norm_g = np.linalg.norm(G[i, :])
-                if norm_g > max_norm:
-                    max_norm = norm_g
-                    best_grad_idx = i
-            
-            # Usar solo ese gradiente
-            g_best = G[best_grad_idx, :]
-            try:
-                dk = -np.linalg.solve(Bk, g_best)
-            except np.linalg.LinAlgError:
-                dk = -g_best / np.linalg.norm(g_best)
-            
-            # Proyectar a restricciones de caja
-            for j in range(len(dk)):
-                dk[j] = np.clip(dk[j], -deltax, deltax)
-            
-            mkd = np.dot(g_best, dk) + 0.5 * np.dot(dk, Bk @ dk)
-        
-        print(fxk, mkd, iter, iter_armijo)
-        
-        # Criterio de parada (igual al código con linprog)
+        fun = lambda x: np.dot(c,x)
+        ineq_cons = {'type': 'ineq', 'fun': lambda x: b - A @ x, 'jac': lambda x: -A}
+        d = np.array([0])
+        eq_cons   = {'type': 'eq',   'fun': lambda x: c @ x - d, 'jac': lambda x: c}
+        res = minimize(fun,x0=xk,bounds=[x0_bounds,x1_bounds,x2_bounds,x3_bounds,x4_bounds],
+                       constraints=[ineq_cons,eq_cons],method='SLSQP')
+
+        # Solucion del subproblema convexo
+        dk = res.x
+        mkd = dk[-1]
+        print(fxk,mkd,iter,iter_armijo)
+
+        # Criterio de parada        
         if abs(mkd) < epsilon:
             break
-        
-        # Búsqueda lineal tipo Armijo (igual al código con linprog)
-        alpha = 1.0
+        alpha = 1
 
         while iter_armijo <= max_iter_armijo:
-            
             iter_armijo += 1
-            
-            xktrial = xk + alpha * dk
-            
-            # Calcular nuevo valor OVO (igual al código con linprog)
+            xktrial[:4] = xk[:4] + alpha * dk[:-1]
+            xktrial[4] = 0 
             for i in range(m):
-                faux[i] = f_i(t[i], y[i], xktrial)
+                faux[i] = f_i(t[i],y[i],xktrial)
             faux = np.sort(faux)
             fxktrial = faux[q]
-            
-            # Condición de Armijo (igual al código con linprog)
-            if fxktrial < fxk + theta * alpha * mkd:
+            if fxktrial < fxk + (theta * alpha * mkd):
                 break
-            
             alpha = 0.5 * alpha
-
-        # Actualizar iterado (igual al código con linprog)
         xk = xktrial
         iter += 1
-        
     print(xk)
 
 data = np.loadtxt("data.txt")
+
 t = data[:,0]
 y = data[:,1]
 m = len(t)
