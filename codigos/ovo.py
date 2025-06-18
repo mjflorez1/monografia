@@ -14,7 +14,7 @@ Resumen:
   convergencia a puntos que satisfacen condiciones de optimalidad adecuadas, incluso en presencia de outliers.
 
 Implementación en Python realizada por:
-  Mateo Flores  
+  Mateo Florez  
   Estudiante del programa de Matemáticas  
   Universidad del Atlántico
 
