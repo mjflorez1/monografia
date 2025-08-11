@@ -140,6 +140,7 @@ def ovo_qnewton_slsqp(t, y):
                 return {'type': 'ineq', 'fun': constr, 'jac': jac}
             cons.append(make_constr(g, B))
 
+        #Restricciones de caja
         bounds = []
         for i in range(4):
             lb = max(-10.0 - xk[i], -deltax)
@@ -154,16 +155,18 @@ def ovo_qnewton_slsqp(t, y):
                        bounds=bounds, constraints=cons,
                        options={'ftol':1e-9, 'maxiter':200})
 
+        #Solucion del subproblema convexo
         d_sol = res.x[:4]
         mkd = float(res.fun)
 
         iter_armijo = 0
         print(f"{fxk} {mkd} {iter} {iter_armijo}")
 
+        #Criterio de parada
         if abs(mkd) < epsilon or np.linalg.norm(d_sol) < epsilon:
             xk = xk + d_sol
             break
-
+        
         if mkd >= -1e-12:
             break
 
