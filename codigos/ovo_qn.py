@@ -15,6 +15,7 @@ Resumen:
     
 Implementación en Python realizada por:
   Mateo Florez  
+  Email: mjflorez@mail.uniatlantico.edu.co
   Estudiante del programa de Matemáticas  
   Universidad del Atlántico
 
