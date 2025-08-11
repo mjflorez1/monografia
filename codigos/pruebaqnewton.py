@@ -18,7 +18,7 @@ def f_i(ti, yi, x):
 # ========================
 def grad_f_i(ti, yi, x, grad):
     diff = model(ti, *x) - yi
-    grad[0] = diff * 1
+    grad[0] = diff
     grad[1] = diff * ti
     grad[2] = diff * ti**2
     grad[3] = diff * ti**3
@@ -91,7 +91,7 @@ def ovo_qnewton_algorithm(t, y):
     while iter <= max_iter:
         iter_armijo = 0
 
-        # Restricciones de caja en forma Gx <= h
+        # Restricciones de caja
         box_G = []
         box_h = []
         for i in range(4):
@@ -128,6 +128,12 @@ def ovo_qnewton_algorithm(t, y):
             Bk += Bkj
         Bk /= nconst
 
+        # Ajuste global para que B_k sea definida positiva
+        eigvals = np.linalg.eigvalsh(Bk)
+        lambda_min = np.min(eigvals)
+        if lambda_min <= 0:
+            Bk += (abs(lambda_min) + epsilon) * np.eye(4)
+
         # Construir matrices del QP
         P = np.zeros((n, n))
         P[:4, :4] = Bk
@@ -136,7 +142,7 @@ def ovo_qnewton_algorithm(t, y):
         G = np.array(box_G)
         h = np.array(box_h)
 
-        # Agregar restricciones de I_delta: g_j^T d - z <= fxk - f_j
+        # Agregar restricciones de I_delta
         for i in range(nconst):
             ind = Idelta[i]
             grad = grad_list[i]
