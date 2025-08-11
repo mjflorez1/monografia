@@ -128,11 +128,11 @@ def ovo_qnewton_algorithm(t, y):
             Bk += Bkj
         Bk /= nconst
 
-        # Ajuste global para que B_k sea definida positiva
+        # Simetrizar y ajuste fuerte para PD
+        Bk = 0.5 * (Bk + Bk.T)
         eigvals = np.linalg.eigvalsh(Bk)
         lambda_min = np.min(eigvals)
-        if lambda_min <= 0:
-            Bk += (abs(lambda_min) + epsilon) * np.eye(4)
+        Bk += (max(0, -lambda_min) + 1e-6) * np.eye(4)
 
         # Construir matrices del QP
         P = np.zeros((n, n))
