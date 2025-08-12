@@ -108,7 +108,7 @@ m = len(t)
 
 resultados = [ovo_algorithm(t, y, p) for p in range(20,44)]
 
-with open("resultados_ovo.txt", "w") as f:
+with open("res_ovo.txt", "w") as f:
     f.write(f"{'p':>2} | {'x1':>15} {'x2':>15} {'x3':>15} {'x4':>15} | {'fobj':>15} | {'iters':>5}\n")
     for p, x1, x2, x3, x4, fobj, iters in resultados:
         f.write(f"{p:2d} | {x1:15.6f} {x2:15.6f} {x3:15.6f} {x4:15.6f} | {fobj:15.6f} | {iters:5d}\n")
