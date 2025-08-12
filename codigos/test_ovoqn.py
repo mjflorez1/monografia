@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.optimize import minimize
 
 # Modelo cúbico
@@ -155,7 +156,13 @@ y = data[:, 1]
 
 resultados = [ovo_qnewton_slsqp(t, y, p) for p in range(20, 44)]
 
-with open("qnovo.txt", "w") as f:
-    f.write(f"{'p':>2} | {'x1':>15} {'x2':>15} {'x3':>15} {'x4':>15} | {'fobj':>15} | {'iters':>5}\n")
-    for p, x1, x2, x3, x4, fobj, iters in resultados:
-        f.write(f"{p:2d} | {x1:15.6f} {x2:15.6f} {x3:15.6f} {x4:15.6f} | {fobj:15.6f} | {iters:5d}\n")
+# Crear DataFrame
+cols = ["p", "x1", "x2", "x3", "x4", "fobj", "iters"]
+df_ovo = pd.DataFrame(resultados, columns=cols)
+
+# Guardar en TXT si quieres
+df_ovo.to_csv("res_quasinewton.txt", sep=" ", index=False)
+
+# Obtener código LaTeX listo
+tabla_latex = df_ovo.to_latex(index=False, float_format="%.6f")
+print(tabla_latex)
