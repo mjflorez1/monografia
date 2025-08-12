@@ -1,12 +1,16 @@
 import numpy as np
+import pandas as pd
 from scipy.optimize import linprog
 
+# Modelo cúbico
 def model(t,x1,x2,x3,x4):
     return x1 + x2*t + x3*t**2 + x4*t**3
 
+# Función objetivo individual
 def f_i(t_i, y_i, x):
     return 0.5 * (model(t_i, *x) - y_i)**2
 
+# Gradiente de la función objetivo individual
 def grad_f_i(t_i, y_i, x, grad):
     diff = model(t_i, *x) - y_i
     grad[0] = diff
@@ -15,6 +19,7 @@ def grad_f_i(t_i, y_i, x, grad):
     grad[3] = diff * t_i**3
     return grad
 
+# Conjunto I_delta
 def mount_Idelta(fovo, faux, indices, delta, Idelta):
     k = 0
     for i in range(m):
@@ -23,6 +28,7 @@ def mount_Idelta(fovo, faux, indices, delta, Idelta):
             k += 1
     return k
 
+# Algoritmo tipo Cauchy (OVO)
 def ovo_algorithm(t, y, q):
     epsilon = 1e-8
     delta = 1e-3
@@ -101,14 +107,22 @@ def ovo_algorithm(t, y, q):
     fxk = np.sort(faux)[q]
     return q, *xk, fxk, iter
 
+# ==== EJECUCIÓN ====
 data = np.loadtxt("data.txt")
 t = data[:, 0]
 y = data[:, 1]
 m = len(t)
 
+# Correr para todos los valores de p
 resultados = [ovo_algorithm(t, y, p) for p in range(20,44)]
 
-with open("res_ovo.txt", "w") as f:
-    f.write(f"{'p':>2} | {'x1':>15} {'x2':>15} {'x3':>15} {'x4':>15} | {'fobj':>15} | {'iters':>5}\n")
-    for p, x1, x2, x3, x4, fobj, iters in resultados:
-        f.write(f"{p:2d} | {x1:15.6f} {x2:15.6f} {x3:15.6f} {x4:15.6f} | {fobj:15.6f} | {iters:5d}\n")
+# Crear DataFrame
+cols = ["p", "x1", "x2", "x3", "x4", "fobj", "iters"]
+df_ovo = pd.DataFrame(resultados, columns=cols)
+
+# Guardar en TXT si quieres
+df_ovo.to_csv("res_ovo.txt", sep=" ", index=False)
+
+# Obtener código LaTeX listo
+tabla_latex = df_ovo.to_latex(index=False, float_format="%.6f")
+print(tabla_latex)
