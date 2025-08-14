@@ -157,17 +157,16 @@ data = np.loadtxt("data.txt")
 t = data[:, 0]
 y = data[:, 1]
 
-p = 20  # valor del parámetro p a evaluar
-resultados = ovo_qnewton_slsqp(t, y, p)
+# Ejecutar para varios valores de p y almacenar iteraciones
+p_values = range(20, 44)
+iteraciones = []
 
-p_val, x1, x2, x3, x4, fobj, iters = resultados
+for p in p_values:
+    resultados = ovo_qnewton_slsqp(t, y, p)
+    iteraciones.append(resultados[-1])  # la última posición es 'iters'
 
-t_fit = np.linspace(min(t), max(t), 300)
-y_fit = model(t_fit, x1, x2, x3, x4)
-
-plt.plot(t, y, color='black', label='Datos originales', alpha=0.7)
-plt.plot(t_fit, y_fit, color='red', label='Ajuste método tipo Quasi-Newton', linewidth=2)
-plt.xlabel('t')
-plt.ylabel('y')
-plt.legend()
+# Graficar iteraciones
+plt.plot(p_values, iteraciones, marker='o', linestyle='-', color='blue')
+plt.xlabel('Valor de p')
+plt.ylabel('Número de iteraciones')
 plt.show()
