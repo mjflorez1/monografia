@@ -1,6 +1,7 @@
 import numpy as np
-import pandas as pd
+#from scipy.optimize import minimize
 from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 
 # Modelo cúbico
 def model(t, x1, x2, x3, x4):
@@ -109,7 +110,7 @@ def ovo_qnewton_slsqp(t, y, p):
         bounds = []
         for i in range(4):
             lb = max(-10.0 - xk[i], -deltax)
-            ub = min( 10.0 - xk[i],  deltax)
+            ub = min(10.0 - xk[i], deltax)
             bounds.append((lb, ub))
         bounds.append((None, 0.0))
 
@@ -149,20 +150,24 @@ def ovo_qnewton_slsqp(t, y, p):
 
     return p, xk[0], xk[1], xk[2], xk[3], fobj, iter_count
 
+
 # ---- MAIN: leer datos y exportar resultados ----
+
 data = np.loadtxt("data.txt")
 t = data[:, 0]
 y = data[:, 1]
 
-resultados = [ovo_qnewton_slsqp(t, y, p) for p in range(20, 44)]
+p = 20  # valor del parámetro p a evaluar
+resultados = ovo_qnewton_slsqp(t, y, p)
 
-# Crear DataFrame
-cols = ["p", "x1", "x2", "x3", "x4", "fobj", "iters"]
-df_ovo = pd.DataFrame(resultados, columns=cols)
+p_val, x1, x2, x3, x4, fobj, iters = resultados
 
-# Guardar en TXT si quieres
-df_ovo.to_csv("res_quasinewton.txt", sep=" ", index=False)
+t_fit = np.linspace(min(t), max(t), 300)
+y_fit = model(t_fit, x1, x2, x3, x4)
 
-# Obtener código LaTeX listo
-tabla_latex = df_ovo.to_latex(index=False, float_format="%.6f")
-print(tabla_latex)
+plt.plot(t, y, color='black', label='Datos originales', alpha=0.7)
+plt.plot(t_fit, y_fit, color='red', label='Ajuste método tipo Quasi-Newton', linewidth=2)
+plt.xlabel('t')
+plt.ylabel('y')
+plt.legend()
+plt.show()
