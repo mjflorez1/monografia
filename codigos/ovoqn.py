@@ -162,9 +162,6 @@ def ovo_qnewton_slsqp(t, y):
         d_sol = res.x[:4]
         mkd = float(res.fun)
 
-        iter_armijo = 0
-        print(f"{fxk} {mkd} {iteracion} {iter_armijo}")
-
         # Criterio de parada
         if abs(mkd) < epsilon or np.linalg.norm(d_sol) < epsilon:
             xk += d_sol
@@ -173,6 +170,7 @@ def ovo_qnewton_slsqp(t, y):
             break
 
         # Búsqueda de línea (Armijo)
+        iter_armijo = 0
         alpha = 1.0
         while iter_armijo < max_iter_armijo:
             iter_armijo += 1
@@ -182,6 +180,8 @@ def ovo_qnewton_slsqp(t, y):
             if fxk_trial <= fxk + theta * alpha * mkd:
                 break
             alpha *= 0.5
+            
+        print(fxk,mkd,iteracion,iter_armijo)
 
         xk = x_trial.copy()
         iteracion += 1

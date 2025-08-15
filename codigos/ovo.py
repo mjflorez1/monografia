@@ -131,7 +131,7 @@ def ovo_algorithm(t,y):
         dk = res.x
         mkd = dk[-1]
 
-        print(fxk,mkd,iter,iter_armijo)
+        #print(fxk,mkd,iter,iter_armijo)
 
         # Criterio de parada        
         if abs(mkd) < epsilon:
@@ -155,6 +155,8 @@ def ovo_algorithm(t,y):
                 break
 
             alpha = 0.5 * alpha
+            
+        print(fxk,mkd,iter,iter_armijo)
 
         xk = xktrial
         iter += 1
