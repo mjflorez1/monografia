@@ -1,16 +1,44 @@
+"""
+Algoritmo de Optimización por Valor de Orden (OVO) – Método quasi-Newton (SLSQP)
+--------------------------------------------------------------------------------
+Esta implementación está basada en el articulo:
+  Andreani, R., Martínez, J. M., Salvatierra, M., & Yano, F. (2006).
+  Quasi-Newton methods for order-value optimization and value-at-risk calculations.
+  Pacific Journal of Optimization, 2(1), 11-33.
+    
+Resumen:
+  Este código implementa un método iterativo para resolver el problema de Optimización por Valor de Orden (OVO),
+  una generalización del problema clásico de Minimax. El objetivo es minimizar el valor funcional que ocupa la 
+  posición p-ésima dentro de un conjunto dado de funciones. A diferencia del método tipo Cauchy, aquí el 
+  subproblema se formula como un problema cuadrático y se resuelve usando el método SLSQP (Sequential Least Squares 
+  Quadratic Programming), permitiendo una aproximación de tipo quasi-Newton mediante matrices Hessianas por cada restricción.
+    
+Implementación en Python realizada por:
+  Mateo Florez  
+  Email: mjflorez@mail.uniatlantico.edu.co
+  Estudiante del programa de Matemáticas  
+  Universidad del Atlántico
+
+Orientador:
+  Dr. Gustavo Quintero  
+  Email: gdquintero@uniatlantico.edu.co
+  Tutor de la monografía de grado  
+  Universidad del Atlántico
+"""
+
 # Bibliotecas importantes
 import numpy as np
 from scipy.optimize import minimize
 
-# --- Modelo cúbico ---
+# Modelo cúbico
 def model(t, x1, x2, x3, x4):
     return x1 + (x2 * t) + x3 * (t**2) + x4 * (t**3)
 
-# --- Función de error cuadrático ---
+# Función de error cuadrático
 def f_i(t_i, y_i, x):
     return 0.5 * ((model(t_i, *x) - y_i)**2)
 
-# --- Gradiente de la función de error ---
+# Gradiente de la función de error
 def grad_f_i(t_i, y_i, x, grad):
     diff = model(t_i, *x) - y_i
     grad[0] = diff
@@ -19,12 +47,12 @@ def grad_f_i(t_i, y_i, x, grad):
     grad[3] = diff * (t_i**3)
     return grad
 
-# --- Hessiana ---
+# Hessiana
 def hess_f_i(ti):
     phi = np.array([1.0, ti, ti**2, ti**3], dtype=float)
     return np.outer(phi, phi)
 
-# --- Construir conjunto I_delta ---
+# Construir conjunto I_delta
 def mount_Idelta(fovo, faux, indices, delta, Idelta, m):
     k = 0
     for i in range(m):
@@ -33,7 +61,7 @@ def mount_Idelta(fovo, faux, indices, delta, Idelta, m):
             k += 1
     return k
 
-# --- Computar matriz B_kj ---
+# Computar matriz B_kj
 def compute_Bkj(H, epsilon=1e-8, reg=1e-12):
     Hs = 0.5 * (H + H.T)
     eigs = np.linalg.eigvalsh(Hs)
@@ -43,7 +71,7 @@ def compute_Bkj(H, epsilon=1e-8, reg=1e-12):
     B += reg * np.eye(Hs.shape[0])
     return 0.5 * (B + B.T)
 
-# --- Funciones de restricción para SLSQP ---
+# Funciones de restricción para SLSQP
 def constraint_fun(var, g, B):
     d = var[:4]
     z = var[4]
@@ -56,7 +84,7 @@ def constraint_jac(var, g, B):
     gradc[4] = 1.0
     return gradc
 
-# --- Algoritmo quasi-Newton (SLSQP) ---
+# Algoritmo quasi-Newton (SLSQP)
 def ovo_qnewton_slsqp(t, y):
     epsilon = 1e-8
     delta = 1e-3
