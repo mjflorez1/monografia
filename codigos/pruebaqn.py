@@ -2,100 +2,122 @@ import numpy as np
 from scipy.optimize import minimize
 
 # =====================================================
-# Función objetivo de prueba (puedes cambiarla)
+# Modelo cúbico
 # =====================================================
-def f(x):
-    return (x[0] - 2)**2 + (x[1] + 3)**2 + 0.5*(x[2] - 5)**2 + (x[3] - 1)**2
+def model(t, x):
+    return x[0] + x[1]*t + x[2]*(t**2) + x[3]*(t**3)
 
-def grad_f(x):
-    return np.array([
-        2*(x[0] - 2),
-        2*(x[1] + 3),
-        (x[2] - 5),
-        2*(x[3] - 1)
-    ])
+def f_i(ti, yi, x):
+    return 0.5 * (model(ti, x) - yi)**2
+
+def grad_f_i(ti, yi, x):
+    diff = model(ti, x) - yi
+    return np.array([diff, diff*ti, diff*(ti**2), diff*(ti**3)], dtype=float)
+
+def hess_f_i(ti):
+    phi = np.array([1.0, ti, ti**2, ti**3], dtype=float)
+    return np.outer(phi, phi)
 
 # =====================================================
-# Búsqueda de línea (Armijo)
+# Armijo
 # =====================================================
-def armijo(f, xk, d, grad, alpha0=1.0, rho=0.5, c=1e-4, max_iter=20):
+def armijo(fovo, t, y, xk, d, mkd, q, alpha0=1.0, rho=0.5, c=1e-4, max_iter=30):
     alpha = alpha0
-    fxk = f(xk)
+    fxk = fovo
     for i in range(max_iter):
-        if f(xk + alpha*d) <= fxk + c*alpha*np.dot(grad, d):
+        faux_trial = np.array([f_i(ti, yi, xk + alpha*d) for ti, yi in zip(t, y)])
+        fxk_trial = np.sort(faux_trial)[q]
+        if fxk_trial <= fxk + c*alpha*mkd:
             return alpha, i+1
         alpha *= rho
     return 0.0, max_iter
 
 # =====================================================
-# Subproblema cuadrático con SLSQP (trust-region aproximado)
-# =====================================================
-def solve_subproblem(grad, Bk, Delta):
-    n = len(grad)
-
-    def model(d):
-        return grad @ d + 0.5 * d @ (Bk @ d)
-
-    def model_grad(d):
-        return grad + Bk @ d
-
-    cons = ({
-        "type": "ineq",
-        "fun": lambda d: Delta**2 - np.dot(d, d),   # ||d||^2 <= Delta^2
-        "jac": lambda d: -2*d
-    })
-
-    res = minimize(model, np.zeros(n), jac=model_grad, constraints=cons,
-                   method="SLSQP", options={"ftol": 1e-9, "disp": False, "maxiter": 100})
-    return res.x
-
-# =====================================================
-# Actualización BFGS
+# BFGS
 # =====================================================
 def bfgs_update(Bk, sk, yk):
-    if np.dot(sk, yk) <= 1e-10:
-        return Bk  # evitar división por cero
+    if np.dot(sk, yk) <= 1e-12:
+        return Bk
     rho = 1.0 / np.dot(sk, yk)
     I = np.eye(len(sk))
     Vk = I - rho * np.outer(sk, yk)
     return Vk.T @ Bk @ Vk + rho * np.outer(sk, sk)
 
 # =====================================================
-# Método quasi-Newton OVO con SLSQP
+# Subproblema cuadrático con SLSQP
 # =====================================================
-def ovo_quasi_newton_slsqp(f, grad_f, x0, Delta0=1.0, tol=1e-6, max_iter=200):
-    xk = np.array(x0, dtype=float)
-    Bk = np.eye(len(x0))  # Hessiana inicial (identidad)
+def solve_subproblem(grads, Bk, Delta):
+    n = 4
+    nv = n + 1  # d (4) + z
+    def obj(var): return float(var[-1])
+    def obj_jac(var):
+        grad = np.zeros(nv); grad[-1] = 1.0
+        return grad
+
+    cons = []
+    for g in grads:
+        cons.append({
+            'type': 'ineq',
+            'fun': lambda var, g=g: var[-1] - (g @ var[:n] + 0.5 * var[:n] @ (Bk @ var[:n])),
+            'jac': lambda var, g=g: np.concatenate([-g - Bk @ var[:n], [1.0]])
+        })
+
+    bounds = [(-Delta, Delta)]*n + [(None, 0.0)]
+    x0 = np.zeros(nv); x0[-1] = -1e-3
+
+    res = minimize(obj, x0, jac=obj_jac, bounds=bounds, constraints=cons,
+                   method="SLSQP", options={"ftol": 1e-9, "maxiter": 100})
+    return res.x[:n], float(res.fun)
+
+# =====================================================
+# Algoritmo OVO quasi-Newton con SLSQP
+# =====================================================
+def ovo_qnewton_slsqp(t, y, Delta0=1.0, q=35, tol=1e-6, max_iter=200):
+    m = len(t)
+    q = min(q, m-1)
+
+    # Inicialización
+    xk = np.array([-1.0, -2.0, 1.0, -1.0], dtype=float)
+    Bk = np.eye(4)
     Delta = Delta0
 
     for k in range(max_iter):
-        gk = grad_f(xk)
+        # Evaluar todas las fi
+        faux = np.array([f_i(ti, yi, xk) for ti, yi in zip(t, y)])
+        indices = np.argsort(faux)
+        fxk = np.sort(faux)[q]
 
-        # Subproblema con SLSQP
-        d = solve_subproblem(gk, Bk, Delta)
-        mkd = gk @ d + 0.5 * d @ (Bk @ d)
+        # Conjunto activo
+        Idelta = indices[:q+1]
+        grads = [grad_f_i(t[i], y[i], xk) for i in Idelta]
+
+        # Resolver subproblema
+        d, mkd = solve_subproblem(grads, Bk, Delta)
 
         if abs(mkd) < tol or np.linalg.norm(d) < tol:
             print(f"[SLEEK] Iter {k}: parada |mkd|={abs(mkd):.2e}, ||d||={np.linalg.norm(d):.2e}")
             break
 
         # Armijo
-        alpha, nback = armijo(f, xk, d, gk)
+        alpha, nback = armijo(fxk, t, y, xk, d, mkd, q)
+        x_next = xk + alpha*d
 
-        x_next = xk + alpha * d
+        # BFGS
         sk = x_next - xk
-        yk = grad_f(x_next) - gk
-
+        yk = np.mean([grad_f_i(t[i], y[i], x_next) - grad_f_i(t[i], y[i], xk) for i in Idelta], axis=0)
         Bk = bfgs_update(Bk, sk, yk)
+
         xk = x_next
+        print(f"[SLEEK] Iter {k}: fxk={fxk:.6f}, mkd={mkd:.3e}, alpha={alpha:.3f}, Armijo={nback}")
 
-        print(f"[SLEEK] Iter {k}: fxk={f(xk):.6f}, mkd={mkd:.3e}, alpha={alpha:.3f}, Armijo={nback}")
-
+    print("Solución final (QN-SLSQP OVO):", xk)
     return xk
 
 # =====================================================
 # Ejemplo de uso
 # =====================================================
-x0 = np.array([0.0, 0.0, 0.0, 0.0])
-sol = ovo_quasi_newton_slsqp(f, grad_f, x0, Delta0=1.0, tol=1e-6, max_iter=200)
-print("Solución final (QN-SLSQP SLEEK):", sol)
+data = np.loadtxt("data.txt")
+t = data[:, 0]
+y = data[:, 1]
+
+ovo_qnewton_slsqp(t, y, Delta0=1.0, q=35, max_iter=200)
