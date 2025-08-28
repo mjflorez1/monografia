@@ -156,12 +156,13 @@ def ovo_algorithm(t,y):
 
             alpha = 0.5 * alpha
             
-        print(fxk,mkd,iter,iter_armijo)
+        print(iter,fxk,mkd,iter_armijo)
 
         xk = xktrial
         iter += 1
 
-    print(xk)
+    print('Solución final: ',xk)
+    
 
 data = np.loadtxt("data.txt")
 

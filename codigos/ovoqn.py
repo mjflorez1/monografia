@@ -66,7 +66,7 @@ def compute_Bkj(H, epsilon=1e-8, reg=1e-12):
     Hs = 0.5 * (H + H.T)
     eigs = np.linalg.eigvalsh(Hs)
     lambda_min = np.min(eigs)
-    ajuste = max(0.0, -lambda_min + epsilon)
+    ajuste = max(1e-3, -lambda_min + epsilon)
     B = Hs + ajuste * np.eye(Hs.shape[0])
     B += reg * np.eye(Hs.shape[0])
     return 0.5 * (B + B.T)
@@ -181,7 +181,7 @@ def ovo_qnewton_slsqp(t, y):
                 break
             alpha *= 0.5
             
-        print(fxk,mkd,iteracion,iter_armijo)
+        print(iteracion,fxk,mkd,iter_armijo)
 
         xk = x_trial.copy()
         iteracion += 1
