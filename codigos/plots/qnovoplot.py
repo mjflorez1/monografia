@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
 # Modelo cúbico
@@ -17,7 +18,7 @@ def grad_f_i(ti, yi, x, grad):
     grad[3] = diff * (ti**3)
     return grad
 
-# Hessiana
+# Hessiana manual
 def hess_f_i(ti):
     H = np.zeros((4,4))
     for i in range(4):
@@ -58,7 +59,7 @@ def constraint_jac(var, g, B):
     gradc[4] = 1.0
     return gradc
 
-# OVO tipo quasi-Newton
+# OVO tipo quasi-Newton con gráfica
 def ovoqn(t, y):
     epsilon = 1e-10
     delta = 0.01
@@ -74,6 +75,10 @@ def ovoqn(t, y):
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
 
+    # --- Guardar evolución ---
+    objetivos = []
+    outliers_list = []
+
     iteracion = 0
     while iteracion < max_iter:
         iteracion += 1
@@ -86,10 +91,14 @@ def ovoqn(t, y):
         faux_sorted = np.sort(faux)
         fxk = faux_sorted[q]
 
-        # COnstrucción de I_delta
+        # Construcción de I_delta
         nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, m)
         if nconst == 0:
             break
+
+        # Guardar para gráfica
+        objetivos.append(fxk)
+        outliers_list.append(m - nconst)
         
         # Se calcula el gradiente y la hessiana, se construye la matriz Bkj
         grads = []
@@ -102,7 +111,7 @@ def ovoqn(t, y):
             Bkjs.append(compute_Bkj(H, first_iter=(iteracion==1)))
             grads.append(g)
 
-        #Subproblema cuadratico
+        # Subproblema cuadrático
         x0 = np.zeros(5)
         bounds = [
             (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
@@ -112,7 +121,6 @@ def ovoqn(t, y):
             (None, 0.0)
         ]
 
-        # restricciones
         constraints = []
         for g, B in zip(grads, Bkjs):
             constraints.append({
@@ -151,6 +159,14 @@ def ovoqn(t, y):
         print(iteracion, fxk, mkd, alpha, iter_armijo)
 
     print("Solución final:", xk)
+
+    # --- Gráfica ---
+    plt.plot(objetivos, outliers_list, marker='o')
+    plt.ylabel("Valor de la función objetivo (fxk)")
+    plt.xlabel("Número de outliers")
+    plt.title("Función objetivo vs Número de outliers (OVO Quasi-Newton)")
+    plt.show()
+
     return xk
 
 # Carga de datos
