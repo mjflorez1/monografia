@@ -43,6 +43,7 @@ def f_i(t_i,y_i,x):
 
 # Gradientes de las funciones de error
 def grad_f_i(t_i,y_i,x,grad):
+
     diff = model(t_i,*x) - y_i
     
     grad[0] = diff * 1

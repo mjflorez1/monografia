@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 # Dimensiones
 n = 3   # número de parámetros
@@ -17,3 +17,6 @@ y = np.array([
 with open("meyer_data.txt", "w") as f:
     for i in range(m):
         f.write(f"{t[i]} {y[i]}\n")
+
+plt.plot(t,y,"o")
+plt.show()

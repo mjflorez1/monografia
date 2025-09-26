@@ -2,28 +2,26 @@ import numpy as np
 from scipy.optimize import linprog
 
 # Modelo
-def model(t, x0, x1, x2):
-    z = x1 / t + x2
-    z = np.clip(z, -700, 700)
-    return x0 * np.exp(z)
+def model(t,x0,x1,x2):
+    return x0 * np.exp(x1 / (t + x2))
 
 # Funciones de error cuadrático
 def f_i(t_i, y_i, x):
-    return 0.5 * ((model(t_i, *x) - y_i) ** 2)
+    return 0.5 * ((model(t_i,*x) - y_i) ** 2)
 
-def grad_f_i(t_i, y_i, x, grad):
+def grad_f_i(t_i,y_i,x,grad):
+
     x0, x1, x2 = x
-    z = x1 / t_i + x2
-    z = np.clip(z, -700, 700)
-    exp_term = np.exp(z)
-    diff = x0 * exp_term - y_i
-    grad[0] = diff * exp_term
-    grad[1] = diff * x0 * exp_term / t_i
-    grad[2] = diff * x0 * exp_term
-    return grad[:]
+    z = np.exp(x1 / (t_i + x2))
+    diff = (x0 * z) - y_i
+    grad[0] = z
+    grad[1] = x0 * z / (t_i + x2)
+    grad[2] = -x0 * x1 * z / ((t_i + x2)**2)
+    return diff * grad[:]
 
 # Montamos el conjunto de índices I_delta
 def mount_Idelta(fovo, faux, indices, delta, Idelta, m):
+
     k = 0
     for i in range(m):
         if abs(fovo - faux[i]) <= delta:
@@ -33,10 +31,10 @@ def mount_Idelta(fovo, faux, indices, delta, Idelta, m):
 
 def ovo(t, y):
     epsilon = 1e-8
-    delta = 1e-3
+    delta = 1e+8
     theta = 0.5
     n = 4
-    q = 10
+    q = 14
     max_iter = 1000
     max_iter_armijo = 100
     iter = 1
@@ -47,7 +45,7 @@ def ovo(t, y):
 
     xktrial = np.zeros(n - 1)
     faux = np.zeros(m)
-    Idelta = np.zeros(m, dtype=int)
+    Idelta = np.empty(m, dtype=int)
 
     c = np.zeros(n)
     c[-1] = 1
@@ -63,7 +61,6 @@ def ovo(t, y):
 
         fxk = faux[q]
         nconst = mount_Idelta(fxk, faux, indices, delta, Idelta, m)
-
         A = np.zeros((nconst, n))
         b = np.zeros(nconst)
         grad = np.zeros((nconst, n - 1))
