@@ -3,153 +3,151 @@ from scipy.optimize import minimize
 
 # Modelo cúbico
 def model(t, x1, x2, x3, x4):
-    return x1 + (x2 * t) + x3 * (t**2) + x4 * (t**3)
+    return x1 + x2*t + x3*(t**2) + x4*(t**3)
 
-# Función de error cuadrático
-def f_i(t_i, y_i, x):
-    return 0.5 * ((model(t_i, *x) - y_i)**2)
+# Función de error y gradiente
+def f_i(ti, yi, x):
+    return 0.5 * (model(ti, *x) - yi)**2
 
-# Gradiente de la función de error
-def grad_f_i(t_i, y_i, x):
-    diff = model(t_i, *x) - y_i
-    return np.array([diff, diff*t_i, diff*(t_i**2), diff*(t_i**3)], dtype=float)
+def grad_f_i(ti, yi, x, grad):
+    diff = model(ti, *x) - yi
+    grad[0] = diff
+    grad[1] = diff * ti
+    grad[2] = diff * (ti**2)
+    grad[3] = diff * (ti**3)
+    return grad
 
 # Hessiana
 def hess_f_i(ti):
-    phi = np.array([1.0, ti, ti**2, ti**3], dtype=float)
-    return np.outer(phi, phi)
+    H = np.zeros((4,4))
+    for i in range(4):
+        for j in range(4):
+            H[i,j] = ti**(i+j)
+    return H
 
-# Construir conjunto I_delta
-def mount_Idelta(fovo, faux, indices, delta, m):
-    Idelta = []
+# Conjunto I_delta
+def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
+    k = 0
     for i in range(m):
-        if abs(fovo - faux[i]) <= delta:
-            Idelta.append(indices[i])
-    return Idelta
+        diff = abs(fovo - faux[i])
+        if diff <= delta:
+            Idelta[k] = indices[i]
+            # igualdad si está muy cerca, desigualdad en otro caso
+            if diff < delta/2:
+                types[k] = 'eq'
+            else:
+                types[k] = 'ineq'
+            k += 1
+    return k
 
-# Computar matriz B_kj usando descomposición espectral
-def compute_Bkj_spectral(H, epsilon=1e-8, reg=1e-8):
-    Hs = 0.5 * (H + H.T)
-    eigvals, eigvecs = np.linalg.eigh(Hs)
-    eigvals_adj = np.maximum(eigvals, epsilon)
-    B = eigvecs @ np.diag(eigvals_adj) @ eigvecs.T
-    B += reg * np.eye(H.shape[0])
-    return 0.5 * (B + B.T)
+# Construcción de B_kj
+def compute_Bkj(H, first_iter=False):
+    if first_iter:
+        return np.eye(H.shape[0])
+    Hs = 0.5*(H + H.T)
+    eigs = np.linalg.eigvalsh(Hs)
+    lambda_min = np.min(eigs)
+    ajuste = max(0, -lambda_min + 1e-8)
+    B = Hs + ajuste*np.eye(Hs.shape[0])
+    return 0.5*(B + B.T)
 
-# Funciones de restricción para SLSQP
+# Constraints
 def constraint_fun(var, g, B):
     d = var[:4]
     z = var[4]
-    return float(z - (g.dot(d) + 0.5 * d.dot(B.dot(d))))
+    return z - (g.dot(d) + 0.5*d.dot(B.dot(d)))
 
 def constraint_jac(var, g, B):
     d = var[:4]
-    gradc = np.zeros(5, dtype=float)
-    gradc[:4] = -g - B.dot(d)
+    gradc = np.zeros(5)
+    gradc[:4] = -(g + B.dot(d))
     gradc[4] = 1.0
     return gradc
 
-# Función objetivo y gradiente (fuera del while)
-nv = 5
-def obj(var):
-    return float(var[-1])
-
-def obj_jac(var):
-    grad_obj = np.zeros(nv, dtype=float)
-    grad_obj[-1] = 1.0
-    return grad_obj
-
-# Ejemplo de restricción de igualdad: suma de x = 1
-def eq_constraint(var):
-    d = var[:4]
-    return np.sum(d) - 1  # debe ser cero
-
-def eq_constraint_jac(var):
-    grad = np.zeros(5, dtype=float)
-    grad[:4] = 1.0
-    grad[4] = 0.0
-    return grad
-
-# Algoritmo quasi-Newton (SLSQP)
+# OVO tipo quasi-Newton
 def ovoqn(t, y):
     epsilon = 1e-8
-    delta = 1e-3
+    delta = 1e-2
     deltax = 1.0
-    theta = 0.01
+    theta = 0.9
     q = 35
-    max_iter = 500
-    max_iter_armijo = 20
+    max_iter = 1000
+    max_iterarmijo = 100
 
     m = len(t)
-    q = min(q, m - 1)
-    xk = np.array([-1.0, -2.0, 1.0, -1.0], dtype=float)
-    fxk_prev = np.inf
+    q = min(q, m-1)
+    xk = np.array([-1.0, -2.0, 1.0, -1.0])
+    faux = np.zeros(m)
+    Idelta = np.zeros(m, dtype=int)
+    types  = np.empty(m, dtype=object)
 
-    iteracion = 1
-    while iteracion <= max_iter:
-        faux = np.array([f_i(ti, yi, xk) for ti, yi in zip(t, y)])
+    iteracion = 0
+    while iteracion < max_iter:
+        iteracion += 1
+
+        # Evaluación de función
+        for i in range(m):
+            faux[i] = f_i(t[i], y[i], xk)
+
         indices = np.argsort(faux)
         faux_sorted = np.sort(faux)
         fxk = faux_sorted[q]
 
-        Idelta = mount_Idelta(fxk, faux_sorted, indices, delta, m)
-        nconst = len(Idelta)
+        # Construcción de I_delta
+        nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, types, m)
         if nconst == 0:
             break
 
+        # Se calcula el gradiente y la hessiana, se construye la matriz Bkj
         grads = []
         Bkjs = []
-        for ind in Idelta:
-            g = grad_f_i(t[ind], y[ind], xk)
+        constr_types = []
+        for r in range(nconst):
+            ind = Idelta[r]
+            g = np.zeros(4)
+            grad_f_i(t[ind], y[ind], xk, g)
             H = hess_f_i(t[ind])
-            Bkj = compute_Bkj_spectral(H)
+            Bkjs.append(compute_Bkj(H, first_iter=(iteracion==1)))
             grads.append(g)
-            Bkjs.append(Bkj)
+            constr_types.append(types[r])
 
-        # Restricciones SLSQP
-        cons = []
-        # desigualdades de OVO
-        for g_local, B_local in zip(grads, Bkjs):
-            cons.append({
-                'type': 'ineq',
-                'fun': lambda var, g=g_local, B=B_local: constraint_fun(var, g, B),
-                'jac': lambda var, g=g_local, B=B_local: constraint_jac(var, g, B)
+        # Subproblema cuadrático
+        x0 = np.zeros(5)
+        bounds = [
+            (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
+            (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)),
+            (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)),
+            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
+            (None, 0.0)
+        ]
+
+        # restricciones eq/ineq
+        constraints = []
+        for g, B, ctype in zip(grads, Bkjs, constr_types):
+            constraints.append({
+                'type': ctype,
+                'fun': lambda var, g=g, B=B: constraint_fun(var, g, B),
+                'jac': lambda var, g=g, B=B: constraint_jac(var, g, B)
             })
-        # igualdad
-        cons.append({
-            'type': 'eq',
-            'fun': eq_constraint,
-            'jac': eq_constraint_jac
-        })
 
-        # Restricciones de caja
-        bounds = [(max(-10.0 - xk[i], -deltax), min(10.0 - xk[i], deltax)) for i in range(4)]
-        bounds.append((None, 0.0))
-
-        x0 = np.zeros(nv, dtype=float)
-        x0[4] = -0.1
-
-        res = minimize(obj, x0, method='SLSQP', jac=obj_jac,
-                       bounds=bounds, constraints=cons,
-                       options={'ftol': 1e-9, 'maxiter': 200})
+        res = minimize(lambda var: var[4], x0, method="SLSQP",
+                       bounds=bounds, constraints=constraints,
+                       options={'ftol':1e-8, 'maxiter':100, 'disp':False})
 
         d_sol = res.x[:4]
         mkd = float(res.fun)
 
-        if abs(mkd) < epsilon or np.linalg.norm(d_sol) < epsilon:
-            xk += d_sol
-            break
-        if abs(fxk - fxk_prev) < 1e-6:
+        # Criterio de parada
+        if abs(mkd)<epsilon or np.linalg.norm(d_sol)<epsilon:
             xk += d_sol
             break
         if mkd >= -1e-12:
-            xk += d_sol
             break
 
-        # Búsqueda de línea Armijo
+        # Armijo
+        alpha = 1
         iter_armijo = 0
-        alpha = 1.0
-        while iter_armijo < max_iter_armijo:
+        while iter_armijo < max_iterarmijo:
             iter_armijo += 1
             x_trial = xk + alpha * d_sol
             faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
@@ -158,18 +156,15 @@ def ovoqn(t, y):
                 break
             alpha *= 0.5
 
-        print(iteracion, fxk, mkd, iter_armijo)
-
         xk = x_trial
-        fxk_prev = fxk
-        iteracion += 1
+        print(iteracion, fxk, mkd, iter_armijo)
 
     print("Solución final:", xk)
     return xk
 
-# Cargar datos y ejecutar
+# Carga de datos
 data = np.loadtxt("data.txt")
-t = data[:, 0]
-y = data[:, 1]
+t = data[:,0]
+y = data[:,1]
 
 ovoqn(t, y)

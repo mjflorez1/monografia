@@ -30,11 +30,8 @@ y_fit = np.polyval(res.x[::-1], t)
 
 # Graficar resultados
 plt.figure()
-plt.scatter(t, y, label='Outliers', color='blue')
+plt.scatter(t, y, label='Polinomio con outliers', color='blue')
 plt.plot(t, w, 'r', linewidth=1.5, label='Modelo verdadero')
 plt.plot(t, y_fit, 'g-.', linewidth=1.5, label='Ajuste con least_squares')
-plt.xlabel('t')
-plt.ylabel('y')
-plt.title('Ajuste con least_squares')
 plt.legend()
 plt.show()

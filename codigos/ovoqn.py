@@ -26,171 +26,251 @@ Orientador:
   Universidad del Atlántico
 """
 
-# Bibliotecas importantes
 import numpy as np
 from scipy.optimize import minimize
+import pandas as pd
+import time
 
 # Modelo cúbico
 def model(t, x1, x2, x3, x4):
-    return x1 + (x2 * t) + x3 * (t**2) + x4 * (t**3)
+    return x1 + x2*t + x3*(t**2) + x4*(t**3)
 
-# Función de error cuadrático
-def f_i(t_i, y_i, x):
-    return 0.5 * ((model(t_i, *x) - y_i)**2)
+# Función de error y gradiente
+def f_i(ti, yi, x):
+    return 0.5 * (model(ti, *x) - yi)**2
 
-# Gradiente de la función de error
-def grad_f_i(t_i, y_i, x, grad):
-    diff = model(t_i, *x) - y_i
+def grad_f_i(ti, yi, x, grad):
+    diff = model(ti, *x) - yi
     grad[0] = diff
-    grad[1] = diff * t_i
-    grad[2] = diff * (t_i**2)
-    grad[3] = diff * (t_i**3)
+    grad[1] = diff * ti
+    grad[2] = diff * (ti**2)
+    grad[3] = diff * (ti**3)
     return grad
 
 # Hessiana
 def hess_f_i(ti):
-    phi = np.array([1.0, ti, ti**2, ti**3], dtype=float)
-    return np.outer(phi, phi)
+    H = np.zeros((4,4))
+    for i in range(4):
+        for j in range(4):
+            H[i,j] = ti**(i+j)
+    return H
 
-# Construir conjunto I_delta
-def mount_Idelta(fovo, faux, indices, delta, Idelta, m):
+# Conjunto I_delta
+def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
     k = 0
     for i in range(m):
-        if abs(fovo - faux[i]) <= delta:
+        diff = abs(fovo - faux[i])
+        if diff <= delta:
             Idelta[k] = indices[i]
+            # igualdad si está muy cerca, desigualdad en otro caso
+            if diff < delta/2:
+                types[k] = 'eq'
+            else:
+                types[k] = 'ineq'
             k += 1
     return k
 
-# Computar matriz B_kj
-def compute_Bkj(H, epsilon=1e-8, reg=1e-12):
-    Hs = 0.5 * (H + H.T)
+# Construcción de B_kj
+def compute_Bkj(H, first_iter=False):
+    if first_iter:
+        return np.eye(H.shape[0])
+    Hs = 0.5*(H + H.T)
     eigs = np.linalg.eigvalsh(Hs)
     lambda_min = np.min(eigs)
-    ajuste = max(1e-3, -lambda_min + epsilon)
-    B = Hs + ajuste * np.eye(Hs.shape[0])
-    B += reg * np.eye(Hs.shape[0])
-    return 0.5 * (B + B.T)
+    ajuste = max(0, -lambda_min + 1e-12)
+    B = Hs + ajuste*np.eye(Hs.shape[0])
+    return 0.5*(B + B.T)
 
-# Funciones de restricción para SLSQP
+# Constraints
 def constraint_fun(var, g, B):
     d = var[:4]
     z = var[4]
-    return float(z - (g.dot(d) + 0.5 * d.dot(B.dot(d))))
+    return z - (g.dot(d) + 0.5*d.dot(B.dot(d)))
 
 def constraint_jac(var, g, B):
     d = var[:4]
-    gradc = np.zeros(5, dtype=float)  # 4 parámetros + z
-    gradc[:4] = -g - B.dot(d)
+    gradc = np.zeros(5)
+    gradc[:4] = -(g + B.dot(d))
     gradc[4] = 1.0
     return gradc
 
-# Algoritmo quasi-Newton (SLSQP)
-def ovo_qnewton_slsqp(t, y):
-    epsilon = 1e-8
-    delta = 1e-3
+# OVO tipo quasi-Newton modificado para devolver métricas
+def ovoqn_metrics(t, y, o_value):
+    epsilon = 1e-15
+    delta = 1e-4
     deltax = 1.0
-    theta = 0.5
-    q = 35
-    max_iter = 500
-    max_iter_armijo = 50
+    theta = 0.9
+    max_iter = 2000
+    max_iterarmijo = 150
 
     m = len(t)
-    q = min(q, m - 1)
-
-    # Solución inicial
-    xk = np.array([-1.0, -2.0, 1.0, -1.0], dtype=float)
+    o = min(o_value, m-1)
+    xk = np.array([-1.0, -2.0, 1.0, -1.0])
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
+    types  = np.empty(m, dtype=object)
 
-    iteracion = 1
-    while iteracion <= max_iter:
-        # Calcular valores de f_i
+    iteracion = 0
+    total_fcnt = 0
+    start_time = time.time()
+    
+    while iteracion < max_iter:
+        iteracion += 1
+
+        # Evaluación de función
         for i in range(m):
             faux[i] = f_i(t[i], y[i], xk)
+        total_fcnt += m
 
         indices = np.argsort(faux)
         faux_sorted = np.sort(faux)
-        fxk = faux_sorted[q]
+        fxk = faux_sorted[o]
 
-        nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, m)
+        # Construcción de I_delta
+        nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, types, m)
         if nconst == 0:
             break
 
-        # Gradientes y matrices B_kj
+        # Limitar el número máximo de restricciones para evitar problemas con SLSQP
+        max_constraints = 50
+        if nconst > max_constraints:
+            nconst = max_constraints
+
+        # Se calcula el gradiente y la hessiana
         grads = []
         Bkjs = []
+        constr_types = []
         for r in range(nconst):
             ind = Idelta[r]
             g = np.zeros(4)
             grad_f_i(t[ind], y[ind], xk, g)
             H = hess_f_i(t[ind])
-            Bkj = compute_Bkj(H)
-            grads.append(g.copy())
-            Bkjs.append(Bkj.copy())
+            Bkjs.append(compute_Bkj(H, first_iter=(iteracion==1)))
+            grads.append(g)
+            constr_types.append(types[r])
 
-        # Definición del problema SLSQP
-        nv = 5  # 4 variables del modelo + z
-        def obj(var):
-            return float(var[-1])
-        def obj_jac(var):
-            grad_obj = np.zeros(nv, dtype=float)
-            grad_obj[-1] = 1.0
-            return grad_obj
+        # Subproblema cuadrático
+        x0 = np.zeros(5)
+        bounds = [
+            (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
+            (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)),
+            (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)),
+            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
+            (None, 0.0)
+        ]
 
-        # Restricciones de desigualdad
-        cons = []
-        for g_local, B_local in zip(grads, Bkjs):
-            cons.append({
-                'type': 'ineq',
-                'fun': lambda var, g=g_local, B=B_local: constraint_fun(var, g, B),
-                'jac': lambda var, g=g_local, B=B_local: constraint_jac(var, g, B)
+        constraints = []
+        for g, B, ctype in zip(grads, Bkjs, constr_types):
+            constraints.append({
+                'type': ctype,
+                'fun': lambda var, g=g, B=B: constraint_fun(var, g, B),
+                'jac': lambda var, g=g, B=B: constraint_jac(var, g, B)
             })
 
-        # Restricciones de caja
-        bounds = [(max(-10.0 - xk[i], -deltax), min(10.0 - xk[i], deltax)) for i in range(4)]
-        bounds.append((None, 0.0))  # z ≤ 0
+        try:
+            # Minimizador con tolerancias estrictas
+            res = minimize(lambda var: var[4], x0, method="SLSQP",
+                           bounds=bounds, constraints=constraints,
+                           options={'ftol':1e-12, 'eps':1e-10, 'maxiter':200, 'disp':False})
 
-        # Punto inicial
-        x0 = np.zeros(nv, dtype=float)
-        x0[4] = -0.1
-
-        res = minimize(obj, x0, method='SLSQP', jac=obj_jac,
-                       bounds=bounds, constraints=cons,
-                       options={'ftol': 1e-9, 'maxiter': 200})
-
-        # Solución del subproblema convexo
-        d_sol = res.x[:4]
-        mkd = float(res.fun)
-
-        # Criterio de parada
-        if abs(mkd) < epsilon or np.linalg.norm(d_sol) < epsilon:
-            xk += d_sol
-            break
-        if mkd >= -1e-12:
-            break
-
-        # Búsqueda de línea (Armijo)
-        iter_armijo = 0
-        alpha = 1.0
-        while iter_armijo < max_iter_armijo:
-            iter_armijo += 1
-            x_trial = xk + alpha * d_sol
-            faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
-            fxk_trial = np.sort(faux_trial)[q]
-            if fxk_trial <= fxk + theta * alpha * mkd:
+            if not res.success:
                 break
-            alpha *= 0.5
-            
-        print(iteracion,fxk,mkd,iter_armijo)
 
-        xk = x_trial.copy()
-        iteracion += 1
+            d_sol = res.x[:4]
+            mkd = float(res.fun)
 
-    print("Solución final:", xk)
-    return xk
+            # Criterio de parada
+            if abs(mkd) < epsilon or np.linalg.norm(d_sol) < 1e-10:
+                xk += d_sol
+                break
+            if mkd >= -1e-14:
+                break
 
+            # Armijo
+            alpha = 1.0
+            iter_armijo = 0
+            while iter_armijo < max_iterarmijo:
+                iter_armijo += 1
+                x_trial = xk + alpha * d_sol
+                faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
+                total_fcnt += m
+                fxk_trial = np.sort(faux_trial)[o]
+                if fxk_trial <= fxk + theta * alpha * mkd:
+                    break
+                alpha *= 0.5
+
+            xk = x_trial
+
+            # Parada adicional por progreso mínimo
+            if iteracion > 50 and abs(mkd) < 1e-10:
+                break
+
+        except Exception as e:
+            break
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+    
+    # Calcular f(x*) final
+    faux_final = np.array([f_i(ti, yi, xk) for ti, yi in zip(t, y)])
+    total_fcnt += m
+    f_final = np.sort(faux_final)[o]
+    
+    return {
+        'o': o_value,
+        'f(x*)': f_final,
+        '#it': iteracion,
+        '#fcnt': total_fcnt,
+        'Time': execution_time
+    }
+
+# Carga de datos
 data = np.loadtxt("data.txt")
-t = data[:, 0]
-y = data[:, 1]
+t = data[:,0]
+y = data[:,1]
+print("Datos cargados desde data.txt")
 
-ovo_qnewton_slsqp(t, y)
+# Ejecutar solo para o = 0 a 10
+o_values = list(range(0, 11))  # o de 0 a 10
+
+print("Ejecutando algoritmo OVO-QN...")
+print("=" * 70)
+
+results = []
+for o in o_values:
+    print(f"Ejecutando para o = {o}...")
+    result = ovoqn_metrics(t, y, o)
+    results.append(result)
+    
+    # Formatear el valor f(x*) para mostrar
+    f_val = result['f(x*)']
+    if f_val < 1e-15:
+        f_str = f"{f_val:.3e}"
+    else:
+        f_str = f"{f_val:.6e}"
+    
+    print(f"Resultado: o={o}, f(x*)={f_str}, #it={result['#it']}, #fcnt={result['#fcnt']}, Time={result['Time']:.4f}s")
+    print("-" * 70)
+
+# Crear DataFrame con las columnas específicas
+df = pd.DataFrame(results, columns=["o", "f(x*)", "#it", "#fcnt", "Time"])
+
+# Formatear los valores para mejor presentación
+def format_scientific(x):
+    if abs(x) < 1e-100:
+        return "0"
+    elif abs(x) < 1e-15:
+        return f"{x:.3e}"
+    else:
+        exponent = int(np.floor(np.log10(abs(x))))
+        coefficient = x / (10 ** exponent)
+        return f"{coefficient:.6f} × 10^{{{exponent}}}"
+
+df['f(x*)'] = df['f(x*)'].apply(format_scientific)
+df['Time'] = df['Time'].apply(lambda x: f"{x:.6f}")
+
+print("\n" + "=" * 70)
+print("RESULTADOS FINALES - ALGORITMO OVO-QN")
+print("=" * 70)
+print(df.to_string(index=False))
+print("=" * 70)
