@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import linprog
 
-# Modelo con clipping en la exponencial
+# Modelo
 def model(t, x0, x1, x2):
     z = x1 / t + x2
     z = np.clip(z, -700, 700)
@@ -71,8 +71,8 @@ def ovo(t, y):
         for i in range(nconst):
             ind = Idelta[i]
             grad_f_i(t[ind], y[ind], xk, grad[i, :])
-            A[i, :-1] = grad[i, :]
-            A[i, -1] = -1
+            A[i,:-1] = grad[i, :]
+            A[i,-1] = -1
             b[i] = f_i(t[ind], y[ind], xk) - fxk
 
         for i in range(nconst):
