@@ -21,11 +21,6 @@ with open("data_osborne1.txt", "w") as f:
     for i in range(m):
         f.write(f'{t[i]} {y[i]}\n')
 
-# --- Graficar ---
-plt.figure(figsize=(8,4))
-plt.plot(t, y, "--", label="Datos")
-plt.xlabel("t")
-plt.ylabel("y")
-plt.title("Datos Osborne1")
-plt.legend()
+
+plt.plot(t,y,"o")
 plt.show()
