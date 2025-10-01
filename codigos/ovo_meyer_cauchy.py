@@ -101,10 +101,6 @@ def ovo(t, y):
             if fxktrial <= fxk + (theta * alpha * mkd):
                 break
             alpha *= 0.5
-        
-        if iter_armijo > max_iter_armijo:
-            print(f"Armijo falló en iteración {iter}")
-            break
 
         table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
         xk = xktrial
