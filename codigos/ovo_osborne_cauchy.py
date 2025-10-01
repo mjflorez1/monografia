@@ -1,10 +1,12 @@
 import numpy as np
 from scipy.optimize import linprog
+import matplotlib.pyplot as plt
+from tabulate import tabulate
 
-def model(t,x0,x1,x2,x3,x4):
+def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
 
-def f_i(t_i,y_i,x):
+def f_i(t_i, y_i, x):
     return 0.5 * ((model(t_i,*x) - y_i) ** 2)
 
 def grad_f_i(t_i, y_i, x, grad):
@@ -14,126 +16,110 @@ def grad_f_i(t_i, y_i, x, grad):
     grad[2] = diff * np.exp(-t_i * x[4])
     grad[3] = diff * -t_i * x[1] * np.exp(-t_i * x[3])
     grad[4] = diff * -t_i * x[2] * np.exp(-t_i * x[4])
-    return grad[:]
+    return grad
 
-def mount_Idelta(fovo,faux,indices,delta,Idelta):
+def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     k = 0
-    for i in range(m):
-        if abs(fovo - faux[i]) <= delta:
+    for i in range(len(faux)):
+        if abs(fovo - faux[i]) <= epsilon:
             Idelta[k] = indices[i]
             k += 1
     return k
 
-def ovo(t,y):
-    epsilon = 1e-8
-    delta = 1e-4
-    theta = 0.5
+def ovo(t, y):
+    stop = 1e-9
+    epsilon = 3e-3
+    delta = 1.0
+    theta = 0.05
     n = 6
-    q = 32
-    max_iter = 200
-    max_iter_armijo = 100
-    alpha = 1.0   # norma L1 permitida
-
-    iter = 1
     m = len(t)
     
-    xk = np.array([0.5,1.5,-1,0.01,0.02])
+    q = 27
 
-    xktrial = np.zeros(n-1)
-    faux    = np.zeros(m)
-    Idelta  = np.zeros(m,dtype=int)
+    max_iter = 200
+    max_iter_armijo = 30
+    iter = 1
 
+    xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
+    xktrial = np.zeros(5)
+    faux = np.zeros(m)
+    Idelta = np.zeros(m, dtype=int)
+    
+    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta"]
+    table = []
+
+    c = np.zeros(n)
+    c[-1] = 1
 
     while iter <= max_iter:    
-
         iter_armijo = 0
         
+        x0_bounds = (-delta, delta)
+        x1_bounds = (-delta, delta)
+        x2_bounds = (-delta, delta)
+        x3_bounds = (-delta, delta)
+        x4_bounds = (-delta, delta)
+        x5_bounds = (None, 0)
+
         for i in range(m):
-            faux[i] = f_i(t[i],y[i],xk)
+            faux[i] = f_i(t[i], y[i], xk)
 
         indices = np.argsort(faux)
-        faux = np.sort(faux)
-
-        fxk = faux[q]
-
-        nconst = mount_Idelta(fxk,faux,indices,delta,Idelta)
-
-        A = np.zeros((nconst,n))
-        grad = np.zeros((nconst,n-1))
+        faux_sorted = faux[indices]
+        fxk = faux_sorted[q]
+        nconst = mount_Idelta(fxk, faux, indices, epsilon, Idelta)
+        
+        A = np.zeros((nconst, n))
+        b = np.zeros(nconst)
 
         for i in range(nconst):
             ind = Idelta[i]
-            grad_f_i(t[ind],y[ind],xk,grad[i,:])
+            grad = np.zeros(5)
+            grad_f_i(t[ind], y[ind], xk, grad)
+            A[i, :-1] = grad
+            A[i, -1] = -1
 
-        p = len(xk)
+        res = linprog(c, A_ub=A, b_ub=b, 
+                     bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds, x4_bounds, x5_bounds],
+                     method='highs')
+        
+        dk = res.x
+        mkd = dk[-1]
 
-        num_vars = 2*p + 1  # d+ (5), d- (5), w (1)
-        c_lp = np.zeros(num_vars)
-        c_lp[-1] = 1  # Min w
-
-        A_ub_lp = []
-        b_ub_lp = []
-
-        # Restricciones grad_i^T (d+ - d-) <= w
-        for i in range(nconst):
-            row = np.zeros(num_vars)
-            row[:p] = grad[i, :]           # +grad * d+
-            row[p:2*p] = -grad[i, :]       # -grad * d-
-            row[-1] = -1                   # -w
-            A_ub_lp.append(row)
-            b_ub_lp.append(0)
-
-        # Restricción ||d||_1 = sum(d+ + d-) <= alpha
-        row = np.zeros(num_vars)
-        row[:p] = 1
-        row[p:2*p] = 1
-        A_ub_lp.append(row)
-        b_ub_lp.append(alpha)
-
-        A_ub_lp = np.array(A_ub_lp)
-        b_ub_lp = np.array(b_ub_lp)
-
-        bounds = [(0, None)] * (2*p) + [(None, None)]
-
-        res = linprog(c_lp, A_ub=A_ub_lp, b_ub=b_ub_lp, bounds=bounds)
-
-        d_plus = res.x[:p]
-        d_minus = res.x[p:2*p]
-        dk = d_plus - d_minus
-        mkd = res.x[-1]
-
-        if abs(mkd) < epsilon:
+        if abs(mkd) < stop:
             break
 
-        alpha_k = 1
-
+        alpha = 1
         while iter_armijo <= max_iter_armijo:
-
             iter_armijo += 1
+            xktrial = xk + (alpha * dk[:-1])
             
-            xktrial = xk + (alpha_k * dk)
-
+            faux_trial = np.zeros(m)
             for i in range(m):
-                faux[i] = f_i(t[i],y[i],xktrial)
-
-            faux = np.sort(faux)
-            fxktrial = faux[q]
-
-            if fxktrial < fxk + (theta * alpha_k * mkd):
-                break
-
-            alpha_k = 0.5 * alpha_k
+                faux_trial[i] = f_i(t[i], y[i], xktrial)
             
-        print(iter, fxk, mkd, iter_armijo)
+            faux_trial_sorted = np.sort(faux_trial)
+            fxktrial = faux_trial_sorted[q]
+            
+            if fxktrial <= fxk + (theta * alpha * mkd):
+                break
+            alpha *= 0.5
 
+        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
         xk = xktrial
         iter += 1
-
-    print('Solución final: ',xk)
     
-data = np.loadtxt("data_osborne1.txt")
-t = data[:,0]
-y = data[:,1]
-m = len(t)
+    print(tabulate(table, headers=header, tablefmt="grid"))
+    print('Solución final:', xk)
+    return xk
 
-ovo(t,y)
+data = np.loadtxt("data_osborne1.txt")
+t = data[:, 0]
+y = data[:, 1]
+
+xk_final = ovo(t, y)
+y_pred = model(t, *xk_final)
+
+plt.plot(t, y, color="blue", alpha=0.6, label="Datos observados")
+plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
+plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight", dpi=150)

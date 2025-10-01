@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
 def model(t,x0,x1,x2,x3,x4):
@@ -19,7 +20,6 @@ def grad_f_i(t_i, y_i, x, grad):
 def hess_f_i(t_i, y_i, x):
     grad = np.zeros(5)
     grad = grad_f_i(t_i, y_i, x, grad)
-
     H = np.zeros((5,5))
     for i in range(5):
         for j in range(5):
@@ -120,7 +120,6 @@ def ovoqn(t, y):
         d_sol = res.x[:4]
         mkd = float(res.fun)
 
-        # Criterio de parada
         if abs(mkd)<epsilon or np.linalg.norm(d_sol)<epsilon:
             xk[:4] += d_sol
             break
@@ -146,8 +145,18 @@ def ovoqn(t, y):
     print("Solución final:", xk)
     return xk
 
+# ===========================
+# Ejecutar y graficar
+# ===========================
 data = np.loadtxt("data_osborne1.txt")
 t = data[:,0]
 y = data[:,1]
 
-ovoqn(t, y)
+xk_final = ovoqn(t, y)
+y_pred = model(t, *xk_final)
+
+plt.figure(figsize=(8,5))
+plt.scatter(t, y, color="blue", label="Datos observados")
+plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado (OVOQN)")
+plt.legend()
+plt.show()

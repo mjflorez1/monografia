@@ -70,8 +70,8 @@ def ovoqn(t, y):
     delta = 1e-2
     deltax = 1.0
     theta = 0.9
-    q = 35
-    max_iter = 1000
+    q = 32
+    max_iter = 200
     max_iterarmijo = 100
 
     m = len(t)
