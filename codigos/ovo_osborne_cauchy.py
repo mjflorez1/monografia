@@ -33,7 +33,6 @@ def ovo(t, y):
     theta = 0.05
     n = 6
     m = len(t)
-    
     q = 27
 
     max_iter = 200
@@ -120,6 +119,6 @@ y = data[:, 1]
 xk_final = ovo(t, y)
 y_pred = model(t, *xk_final)
 
-plt.plot(t, y, color="blue", alpha=0.6, label="Datos observados")
+plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
 plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight", dpi=150)

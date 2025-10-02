@@ -1,11 +1,11 @@
 import numpy as np
 from scipy.optimize import minimize
+from tabulate import tabulate
+import matplotlib.pyplot as plt
 
-# Modelo cúbico
 def model(t, x1, x2, x3, x4):
     return x1 + x2*t + x3*(t**2) + x4*(t**3)
 
-# Función de error y gradiente
 def f_i(ti, yi, x):
     return 0.5 * (model(ti, *x) - yi)**2
 
@@ -15,9 +15,8 @@ def grad_f_i(ti, yi, x, grad):
     grad[1] = diff * ti
     grad[2] = diff * (ti**2)
     grad[3] = diff * (ti**3)
-    return grad
+    return grad[:]
 
-# Hessiana
 def hess_f_i(ti):
     H = np.zeros((4,4))
     for i in range(4):
@@ -25,14 +24,12 @@ def hess_f_i(ti):
             H[i,j] = ti**(i+j)
     return H
 
-# Conjunto I_delta
 def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
     k = 0
     for i in range(m):
         diff = abs(fovo - faux[i])
         if diff <= delta:
             Idelta[k] = indices[i]
-            # igualdad si está muy cerca, desigualdad en otro caso
             if diff < delta/2:
                 types[k] = 'eq'
             else:
@@ -40,7 +37,6 @@ def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
             k += 1
     return k
 
-# Construcción de B_kj
 def compute_Bkj(H, first_iter=False):
     if first_iter:
         return np.eye(H.shape[0])
@@ -51,7 +47,6 @@ def compute_Bkj(H, first_iter=False):
     B = Hs + ajuste*np.eye(Hs.shape[0])
     return 0.5*(B + B.T)
 
-# Constraints
 def constraint_fun(var, g, B):
     d = var[:4]
     z = var[4]
@@ -64,13 +59,12 @@ def constraint_jac(var, g, B):
     gradc[4] = 1.0
     return gradc
 
-# OVO tipo quasi-Newton
 def ovoqn(t, y):
     epsilon = 1e-8
     delta = 1e-2
     deltax = 1.0
     theta = 0.9
-    q = 32
+    q = 35
     max_iter = 200
     max_iterarmijo = 100
 
@@ -80,12 +74,14 @@ def ovoqn(t, y):
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
     types  = np.empty(m, dtype=object)
+    
+    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta"]
+    table = []
 
     iteracion = 0
     while iteracion < max_iter:
         iteracion += 1
 
-        # Evaluación de función
         for i in range(m):
             faux[i] = f_i(t[i], y[i], xk)
 
@@ -93,12 +89,10 @@ def ovoqn(t, y):
         faux_sorted = np.sort(faux)
         fxk = faux_sorted[q]
 
-        # Construcción de I_delta
         nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, types, m)
         if nconst == 0:
             break
 
-        # Se calcula el gradiente y la hessiana, se construye la matriz Bkj
         grads = []
         Bkjs = []
         constr_types = []
@@ -111,7 +105,6 @@ def ovoqn(t, y):
             grads.append(g)
             constr_types.append(types[r])
 
-        # Subproblema cuadrático
         x0 = np.zeros(5)
         bounds = [
             (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
@@ -121,7 +114,6 @@ def ovoqn(t, y):
             (None, 0.0)
         ]
 
-        # restricciones eq/ineq
         constraints = []
         for g, B, ctype in zip(grads, Bkjs, constr_types):
             constraints.append({
@@ -137,14 +129,12 @@ def ovoqn(t, y):
         d_sol = res.x[:4]
         mkd = float(res.fun)
 
-        # Criterio de parada
         if abs(mkd)<epsilon or np.linalg.norm(d_sol)<epsilon:
             xk += d_sol
             break
         if mkd >= -1e-12:
             break
 
-        # Armijo
         alpha = 1
         iter_armijo = 0
         while iter_armijo < max_iterarmijo:
@@ -157,14 +147,20 @@ def ovoqn(t, y):
             alpha *= 0.5
 
         xk = x_trial
-        print(iteracion, fxk, mkd, iter_armijo)
-
+        table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
+        #print(iteracion, fxk, mkd, iter_armijo)
+        
+    print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)
     return xk
 
-# Carga de datos
 data = np.loadtxt("data.txt")
 t = data[:,0]
 y = data[:,1]
 
-ovoqn(t, y)
+xk_final = ovoqn(t, y)
+y_pred = model(t, *xk_final)
+
+plt.scatter(t, y, color="blue", alpha=0.6)
+plt.plot(t, y_pred, color="red", linewidth=2)
+plt.savefig("figuras/ovo_cn.pdf", bbox_inches="tight")

@@ -1,11 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# --- Dimensiones y datos ---
 n = 5
 m = 33
 
-# Valores de y
 y = np.array([
     0.844, 0.908, 0.932, 0.936, 0.925, 0.908, 0.881, 0.850, 0.818,
     0.784, 0.751, 0.718, 0.685, 0.658, 0.628, 0.603, 0.580, 0.558,
@@ -20,11 +18,8 @@ y[12] += noise
 y[13] += noise
 y[14] += noise
 
-
-# Generar valores de t: 0, 10, ..., 320
 t = np.array([10*(i-1) for i in range(1, m+1)])
 
-# --- Guardar datos ---
 with open("data_osborne1.txt", "w") as f:
     for i in range(m):
         f.write(f'{t[i]} {y[i]}\n')

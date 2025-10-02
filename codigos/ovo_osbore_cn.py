@@ -2,28 +2,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
-def model(t,x0,x1,x2,x3,x4):
+def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
 
-def f_i(t_i,y_i,x):
-    return 0.5 * ((model(t_i,*x) - y_i) ** 2)
+def f_i(ti, yi, x):
+    return 0.5 * (model(ti, *x) - yi)**2
 
-def grad_f_i(t_i, y_i, x, grad):
-    diff = model(t_i, *x) - y_i
-    grad[0] = diff * 1
-    grad[1] = diff * np.exp(-t_i * x[3])
-    grad[2] = diff * np.exp(-t_i * x[4])
-    grad[3] = diff * -t_i * x[1] * np.exp(-t_i * x[3])
-    grad[4] = diff * -t_i * x[2] * np.exp(-t_i * x[4])
-    return grad[:]
+def grad_f_i(ti, yi, x, grad):
+    diff = model(ti, *x) - yi
+    grad[0] = diff
+    grad[1] = diff * np.exp(-ti * x[3])
+    grad[2] = diff * np.exp(-ti * x[4])
+    grad[3] = diff * (-ti * x[1] * np.exp(-ti * x[3]))
+    grad[4] = diff * (-ti * x[2] * np.exp(-ti * x[4]))
+    return grad
 
-def hess_f_i(t_i, y_i, x):
+def hess_f_i(ti, yi, x):
     grad = np.zeros(5)
-    grad = grad_f_i(t_i, y_i, x, grad)
-    H = np.zeros((5,5))
-    for i in range(5):
-        for j in range(5):
-            H[i,j] = grad[i] * grad[j]
+    grad_f_i(ti, yi, x, grad)
+    H = np.outer(grad, grad)
     return H
 
 def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
@@ -50,31 +47,32 @@ def compute_Bkj(H, first_iter=False):
     return 0.5*(B + B.T)
 
 def constraint_fun(var, g, B):
-    d = var[:4]
-    z = var[4]
+    d = var[:5]
+    z = var[5]
     return z - (g.dot(d) + 0.5*d.dot(B.dot(d)))
 
 def constraint_jac(var, g, B):
-    d = var[:4]
-    gradc = np.zeros(5)
-    gradc[:4] = -(g + B.dot(d))
-    gradc[4] = 1.0
+    d = var[:5]
+    gradc = np.zeros(6)
+    gradc[:5] = -(g + B.dot(d))
+    gradc[5] = 1.0
     return gradc
 
 def ovoqn(t, y):
     epsilon = 1e-8
-    delta = 1e-4
-    theta = 0.5
-    q = 35
+    delta = 1e-3  # Mucho más pequeño para menos restricciones
+    deltax = 2.0
+    theta = 0.1
+    q = 27
     max_iter = 200
-    max_iterarmijo = 100
+    max_iterarmijo = 30
 
     m = len(t)
     q = min(q, m-1)
-    xk = np.array([0.5, 1.5, -1, 0.01, 0.02])
+    xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
-    types  = np.empty(m, dtype=object)
+    types = np.empty(m, dtype=object)
 
     iteracion = 0
     while iteracion < max_iter:
@@ -88,8 +86,12 @@ def ovoqn(t, y):
         fxk = faux_sorted[q]
 
         nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, types, m)
+        
         if nconst == 0:
-            break
+            delta *= 2
+            continue
+        
+        print(f"Iter {iteracion}: nconst={nconst}, fxk={fxk:.6e}")
 
         grads = []
         Bkjs = []
@@ -99,12 +101,14 @@ def ovoqn(t, y):
             g = np.zeros(5)
             grad_f_i(t[ind], y[ind], xk, g)
             H = hess_f_i(t[ind], y[ind], xk)
-            B_full = compute_Bkj(H, first_iter=(iteracion==1))
-            Bkjs.append(B_full[:4,:4])
-            grads.append(g[:4])
+            Bkjs.append(compute_Bkj(H, first_iter=(iteracion==1)))
+            grads.append(g)
             constr_types.append(types[r])
 
-        x0 = np.zeros(5)
+        x0 = np.zeros(6)
+        x0[5] = -1.0  # Inicializar z en valor negativo
+        # Restricción ||d||_inf <= deltax
+        bounds = [(-deltax, deltax)] * 5 + [(None, 0.0)]
 
         constraints = []
         for g, B, ctype in zip(grads, Bkjs, constr_types):
@@ -114,25 +118,38 @@ def ovoqn(t, y):
                 'jac': lambda var, g=g, B=B: constraint_jac(var, g, B)
             })
 
-        res = minimize(lambda var: var[4], x0, method="SLSQP", constraints=constraints,
-                       options={'ftol':1e-8, 'maxiter':100, 'disp':False})
+        try:
+            res = minimize(lambda var: var[5], x0, method="SLSQP",
+                           bounds=bounds, constraints=constraints,
+                           options={'ftol':1e-8, 'maxiter':100, 'disp':False})
+        except Exception as e:
+            print(f"Error en minimize: {e}")
+            break
 
-        d_sol = res.x[:4]
+        if not res.success:
+            print(f"Minimize falló: {res.message}")
+            break
+
+        d_sol = res.x[:5]
         mkd = float(res.fun)
+        
+        print(f"  -> mkd={mkd:.6e}, |d|={np.linalg.norm(d_sol):.6e}")
+        print(f"  -> Criterios: |mkd|<{epsilon} = {abs(mkd)<epsilon}, |d|<{epsilon} = {np.linalg.norm(d_sol)<epsilon}")
+        print(f"  -> mkd>=-1e-12 = {mkd >= -1e-12}")
 
         if abs(mkd)<epsilon or np.linalg.norm(d_sol)<epsilon:
-            xk[:4] += d_sol
+            print(f"DETENIENDO: Criterio de convergencia satisfecho")
+            xk += d_sol
             break
         if mkd >= -1e-12:
+            print(f"DETENIENDO: mkd no es dirección de descenso")
             break
 
         alpha = 1
         iter_armijo = 0
         while iter_armijo < max_iterarmijo:
             iter_armijo += 1
-            d_full = np.zeros_like(xk)
-            d_full[:4] = d_sol
-            x_trial = xk + alpha * d_full
+            x_trial = xk + alpha * d_sol
             faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
             fxk_trial = np.sort(faux_trial)[q]
             if fxk_trial <= fxk + theta * alpha * mkd:
@@ -140,14 +157,11 @@ def ovoqn(t, y):
             alpha *= 0.5
 
         xk = x_trial
-        print(iteracion, fxk, mkd, iter_armijo)
+        print(f"  -> mkd={mkd:.6e}, armijo={iter_armijo}")
 
     print("Solución final:", xk)
     return xk
 
-# ===========================
-# Ejecutar y graficar
-# ===========================
 data = np.loadtxt("data_osborne1.txt")
 t = data[:,0]
 y = data[:,1]
@@ -155,8 +169,11 @@ y = data[:,1]
 xk_final = ovoqn(t, y)
 y_pred = model(t, *xk_final)
 
-plt.figure(figsize=(8,5))
-plt.scatter(t, y, color="blue", label="Datos observados")
-plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado (OVOQN)")
+plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
+plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVOQN")
+plt.xlabel("t")
+plt.ylabel("y")
 plt.legend()
+plt.grid(True, alpha=0.3)
+plt.savefig("figuras/ovoqn_osborne.png", bbox_inches="tight", dpi=150)
 plt.show()

@@ -119,5 +119,4 @@ y_pred = model(t, *xk_final)
 
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
-plt.savefig("figuras/ovo_meyer_cauchy.png", bbox_inches="tight", dpi=150)
-plt.show()
+plt.savefig("figuras/ovo_meyer_cauchy.pdf", bbox_inches="tight", dpi=150)
