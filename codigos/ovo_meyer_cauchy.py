@@ -30,10 +30,10 @@ def ovo(t, y):
     stop = 5e+0
     epsilon = 1e+8
     delta = 1e+2
-    theta = 0.5
+    theta = 0.3
     n = 4
     m = len(t)
-    q = 15
+    q = 12
     max_iter = 100
     max_iter_armijo = 30
     iter = 1
@@ -120,3 +120,4 @@ y_pred = model(t, *xk_final)
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
 plt.savefig("figuras/ovo_meyer_cauchy.pdf", bbox_inches="tight", dpi=150)
+plt.show()

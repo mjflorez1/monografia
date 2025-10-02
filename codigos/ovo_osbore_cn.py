@@ -6,7 +6,7 @@ def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
 
 def f_i(ti, yi, x):
-    return 0.5 * (model(ti, *x) - yi)**2
+    return 0.5 * ((model(ti, *x) - yi)**2)
 
 def grad_f_i(ti, yi, x, grad):
     diff = model(ti, *x) - yi
@@ -59,17 +59,17 @@ def constraint_jac(var, g, B):
     return gradc
 
 def ovoqn(t, y):
-    epsilon = 1e-8
-    delta = 1e-3  # Mucho más pequeño para menos restricciones
-    deltax = 2.0
-    theta = 0.1
+    epsilon = 1e-9
+    delta = 1e-3
+    deltax = 0.5
+    theta = 0.5
     q = 27
     max_iter = 200
-    max_iterarmijo = 30
+    max_iterarmijo = 100
 
     m = len(t)
     q = min(q, m-1)
-    xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
+    xk = np.array([0.4, 1.2, -0.8, 0.05, 0.03])
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
     types = np.empty(m, dtype=object)
@@ -88,10 +88,7 @@ def ovoqn(t, y):
         nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, types, m)
         
         if nconst == 0:
-            delta *= 2
-            continue
-        
-        print(f"Iter {iteracion}: nconst={nconst}, fxk={fxk:.6e}")
+            break
 
         grads = []
         Bkjs = []
@@ -106,8 +103,6 @@ def ovoqn(t, y):
             constr_types.append(types[r])
 
         x0 = np.zeros(6)
-        x0[5] = -1.0  # Inicializar z en valor negativo
-        # Restricción ||d||_inf <= deltax
         bounds = [(-deltax, deltax)] * 5 + [(None, 0.0)]
 
         constraints = []
@@ -118,31 +113,17 @@ def ovoqn(t, y):
                 'jac': lambda var, g=g, B=B: constraint_jac(var, g, B)
             })
 
-        try:
-            res = minimize(lambda var: var[5], x0, method="SLSQP",
-                           bounds=bounds, constraints=constraints,
-                           options={'ftol':1e-8, 'maxiter':100, 'disp':False})
-        except Exception as e:
-            print(f"Error en minimize: {e}")
-            break
-
-        if not res.success:
-            print(f"Minimize falló: {res.message}")
-            break
+        res = minimize(lambda var: var[5], x0, method="SLSQP",
+                       bounds=bounds, constraints=constraints,
+                       options={'ftol':1e-8, 'maxiter':100, 'disp':False})
 
         d_sol = res.x[:5]
         mkd = float(res.fun)
-        
-        print(f"  -> mkd={mkd:.6e}, |d|={np.linalg.norm(d_sol):.6e}")
-        print(f"  -> Criterios: |mkd|<{epsilon} = {abs(mkd)<epsilon}, |d|<{epsilon} = {np.linalg.norm(d_sol)<epsilon}")
-        print(f"  -> mkd>=-1e-12 = {mkd >= -1e-12}")
 
         if abs(mkd)<epsilon or np.linalg.norm(d_sol)<epsilon:
-            print(f"DETENIENDO: Criterio de convergencia satisfecho")
             xk += d_sol
             break
         if mkd >= -1e-12:
-            print(f"DETENIENDO: mkd no es dirección de descenso")
             break
 
         alpha = 1
@@ -157,17 +138,22 @@ def ovoqn(t, y):
             alpha *= 0.5
 
         xk = x_trial
-        print(f"  -> mkd={mkd:.6e}, armijo={iter_armijo}")
+        print(iteracion, fxk_trial, mkd, iter_armijo)
 
     print("Solución final:", xk)
     return xk
+
+def model_safe(t, x0, x1, x2, x3, x4):
+    arg1 = np.clip(-t * x3, -700, 700)
+    arg2 = np.clip(-t * x4, -700, 700)
+    return x0 + (x1 * np.exp(arg1)) + (x2 * np.exp(arg2))
 
 data = np.loadtxt("data_osborne1.txt")
 t = data[:,0]
 y = data[:,1]
 
 xk_final = ovoqn(t, y)
-y_pred = model(t, *xk_final)
+y_pred = model_safe(t, *xk_final)
 
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVOQN")
