@@ -11,10 +11,10 @@ y = np.array([
     8261, 7030, 6005, 5147, 4427, 3820, 3307, 2872
 ])
 
-#noise = 1e+4
-#y[4] += noise
-#y[5] += noise
-#y[6] += noise
+noise = 1e+3
+y[4] += noise
+y[5] += noise
+y[6] += noise
 
 with open("data_meyer.txt", "w") as f:
     for i in range(m):

@@ -36,7 +36,7 @@ def ovo(t, y):
     q = 27
 
     max_iter = 200
-    max_iter_armijo = 30
+    max_iter_armijo = 35
     iter = 1
 
     xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
@@ -121,4 +121,4 @@ y_pred = model(t, *xk_final)
 
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
-plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight", dpi=150)
+plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight")
