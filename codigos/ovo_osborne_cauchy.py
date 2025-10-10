@@ -27,10 +27,10 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     return k
 
 def ovo(t, y):
-    stop = 1e-9
+    stop = 1e-11
     epsilon = 3e-3
-    delta = 1.0
-    theta = 0.05
+    delta = 1.8
+    theta = 0.2
     n = 6
     m = len(t)
     q = 27
@@ -122,3 +122,4 @@ y_pred = model(t, *xk_final)
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
 plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight")
+plt.show()

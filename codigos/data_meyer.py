@@ -21,4 +21,5 @@ with open("data_meyer.txt", "w") as f:
         f.write(f"{t[i]} {y[i]}\n")
 
 plt.plot(t,y,"o")
+plt.savefig("figuras/meyer.pdf", bbox_inches="tight")
 plt.show()

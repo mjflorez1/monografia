@@ -24,26 +24,21 @@ def hess_f_i(ti):
             H[i,j] = ti**(i+j)
     return H
 
-def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
+def mount_Idelta(fovo, faux_sorted, indices, delta, Idelta, types, m):
     k = 0
     for i in range(m):
-        diff = abs(fovo - faux[i])
+        diff = abs(fovo - faux_sorted[i])
         if diff <= delta:
             Idelta[k] = indices[i]
-            if diff < delta/2:
-                types[k] = 'eq'
-            else:
-                types[k] = 'ineq'
+            types[k] = 'ineq'
             k += 1
     return k
 
-def compute_Bkj(H, first_iter=False):
-    if first_iter:
-        return np.eye(H.shape[0])
+def compute_Bkj(H):
     Hs = 0.5*(H + H.T)
     eigs = np.linalg.eigvalsh(Hs)
     lambda_min = np.min(eigs)
-    ajuste = max(0, -lambda_min + 1e-8)
+    ajuste = max(0, -lambda_min + 1e-6)
     B = Hs + ajuste*np.eye(Hs.shape[0])
     return 0.5*(B + B.T)
 
@@ -60,16 +55,15 @@ def constraint_jac(var, g, B):
     return gradc
 
 def ovoqn(t, y):
-    epsilon = 1e-8
+    epsilon = 1e-9
     delta = 1e-2
-    deltax = 1.0
-    theta = 0.9
+    deltax = 1.2
+    theta = 0.7
     q = 35
     max_iter = 200
     max_iterarmijo = 100
 
     m = len(t)
-    q = min(q, m-1)
     xk = np.array([-1.0, -2.0, 1.0, -1.0])
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
@@ -101,7 +95,7 @@ def ovoqn(t, y):
             g = np.zeros(4)
             grad_f_i(t[ind], y[ind], xk, g)
             H = hess_f_i(t[ind])
-            Bkjs.append(compute_Bkj(H, first_iter=(iteracion==1)))
+            Bkjs.append(compute_Bkj(H))
             grads.append(g)
             constr_types.append(types[r])
 
@@ -123,20 +117,18 @@ def ovoqn(t, y):
             })
 
         res = minimize(lambda var: var[4], x0, method="SLSQP",
-                       bounds=bounds, constraints=constraints,
-                       options={'ftol':1e-8, 'maxiter':100, 'disp':False})
+                       bounds=bounds, constraints=constraints)
 
         d_sol = res.x[:4]
-        mkd = float(res.fun)
+        mkd = res.fun
 
-        if abs(mkd)<epsilon or np.linalg.norm(d_sol)<epsilon:
+        if abs(mkd)<epsilon:
             xk += d_sol
-            break
-        if mkd >= -1e-12:
             break
 
         alpha = 1
         iter_armijo = 0
+        x_trial = xk
         while iter_armijo < max_iterarmijo:
             iter_armijo += 1
             x_trial = xk + alpha * d_sol
@@ -148,7 +140,6 @@ def ovoqn(t, y):
 
         xk = x_trial
         table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
-        #print(iteracion, fxk, mkd, iter_armijo)
         
     print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)
@@ -161,6 +152,7 @@ y = data[:,1]
 xk_final = ovoqn(t, y)
 y_pred = model(t, *xk_final)
 
-plt.scatter(t, y, color="blue", alpha=0.6)
-plt.plot(t, y_pred, color="red", linewidth=2)
+plt.scatter(t, y, color="blue", label="Datos")
+plt.plot(t, y_pred, color="red", label="Ajuste")
 plt.savefig("figuras/ovo_cn.pdf", bbox_inches="tight")
+plt.show()

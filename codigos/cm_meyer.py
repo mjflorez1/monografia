@@ -1,69 +1,70 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import least_squares
+from scipy.optimize import minimize
 
-data = np.loadtxt("data_meyer.txt")
-t = data[:, 0]
-y = data[:, 1]
+datos = np.loadtxt('data_meyer.txt')
+t = datos[:, 0]
+y = datos[:, 1]
 
-# Función de Meyer: f(x, beta) = beta[0] * exp(beta[1] / (x + beta[2]))
 def meyer(beta, x):
     return beta[0] * np.exp(beta[1] / (x + beta[2]))
 
-# Función de residuos
-def residuals(beta, x, y):
-    return y - meyer(beta, x)
+def objetivo(beta):
+    y_modelo = meyer(beta, t)
+    return 0.5 * np.sum((y - y_modelo) ** 2)
 
-# Valores iniciales para los parámetros
-beta_0 = np.array([1.0, 1.0, 1.0])
+beta0 = [2.5, 6000, 350]
 
-# Ajuste usando mínimos cuadrados no lineales
-result = least_squares(residuals, beta_0, args=(t, y))
-beta_hat = result.x
-y_hat = meyer(beta_hat, t)
-resid = y - y_hat
+bounds = [(0.01, 10), (1000, 10000), (100, 600)]
+res_lbfgsb = minimize(objetivo, beta0, method='L-BFGS-B', bounds=bounds)
 
-# Cálculo de la matriz Jacobiana en el óptimo
-J = result.jac
-n, p = len(t), len(beta_hat)
+print("=" * 60)
+print("AJUSTE FUNCIÓN DE MEYER - L-BFGS-B (con bounds)")
+print("=" * 60)
+print("\nCoeficientes estimados:")
+print(f"β₁ = {res_lbfgsb.x[0]:.6f}")
+print(f"β₂ = {res_lbfgsb.x[1]:.6f}")
+print(f"β₃ = {res_lbfgsb.x[2]:.6f}")
+print(f"\nValor de la función objetivo = {res_lbfgsb.fun:.6f}")
+print(f"Número de iteraciones = {res_lbfgsb.nfev}")
+print(f"Optimización exitosa: {res_lbfgsb.success}")
 
-# Estimación de la varianza residual
-sigma2_hat = (resid @ resid) / (n - p)
+res_bfgs = minimize(objetivo, beta0, method='BFGS')
 
-# Matriz de covarianza de los parámetros
-# cov(beta) ≈ sigma² * (J'J)^(-1)
-cov_beta = sigma2_hat * np.linalg.inv(J.T @ J)
-stderr_beta = np.sqrt(np.diag(cov_beta))
+print("\n" + "=" * 60)
+print("AJUSTE FUNCIÓN DE MEYER - BFGS (sin bounds)")
+print("=" * 60)
+print("\nCoeficientes estimados:")
+print(f"β₁ = {res_bfgs.x[0]:.6f}")
+print(f"β₂ = {res_bfgs.x[1]:.6f}")
+print(f"β₃ = {res_bfgs.x[2]:.6f}")
+print(f"\nValor de la función objetivo = {res_bfgs.fun:.6f}")
+print(f"Número de iteraciones = {res_bfgs.nfev}")
+print(f"Optimización exitosa: {res_bfgs.success}")
+print("=" * 60)
 
-# R² - coeficiente de determinación
-ss_res = np.sum(resid**2)
+res = res_lbfgsb if res_lbfgsb.fun < res_bfgs.fun else res_bfgs
+
+y_fit = meyer(res.x, t)
+
+ss_res = np.sum((y - y_fit)**2)
 ss_tot = np.sum((y - np.mean(y))**2)
 r2 = 1 - (ss_res / ss_tot)
+print(f"\nR² (mejor ajuste) = {r2:.6f}")
 
-# Resultados numéricos
-print("=" * 60)
-print("AJUSTE FUNCIÓN DE MEYER - MÍNIMOS CUADRADOS NO LINEALES")
-print("=" * 60)
-print(f"\nCoeficientes estimados:")
-print(f"β₁ = {beta_hat[0]:.6f} ± {stderr_beta[0]:.6f}")
-print(f"β₂ = {beta_hat[1]:.6f} ± {stderr_beta[1]:.6f}")
-print(f"β₃ = {beta_hat[2]:.6f} ± {stderr_beta[2]:.6f}")
-print(f"\nVarianza residual estimada = {sigma2_hat:.6f}")
-print(f"R² = {r2:.6f}")
-print(f"Número de iteraciones = {result.nfev}")
-print("=" * 60)
-
-# Graficar
 xx = np.linspace(t.min() - 5, t.max() + 5, 400)
-y_hat_xx = meyer(beta_hat, xx)
+y_fit_xx = meyer(res.x, xx)
 
-plt.figure(figsize=(10, 6))
-plt.scatter(t, y, label='datos observados', marker='o', color='r', s=50, zorder=3)
-plt.plot(xx, y_hat_xx, label='ajuste Meyer', linewidth=2, color='blue')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Ajuste de la Función de Meyer')
-plt.legend()
-plt.grid(True, alpha=0.3)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14,6))
+
+ax1.scatter(t, y, label='Datos observados', color='red', s=50, zorder=3)
+ax1.plot(xx, y_fit_xx, 'g--', linewidth=2, label='Ajuste Meyer')
+
+ax2.scatter(t, y, color='red', s=50, zorder=3)
+ax2.plot(xx, y_fit_xx, 'g--', linewidth=2)
+ax2.set_xlim(60, 90)
+ax2.set_ylim(9000, 22000)
+
 plt.tight_layout()
+plt.savefig("figuras/meyer_ls.pdf", bbox_inches = 'tight')
 plt.show()

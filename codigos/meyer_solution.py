@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def model(t,x0,x1,x2):
     return x0 * np.exp(x1 / (t + x2))
 
-data = np.loadtxt("meyer_data.txt")
+data = np.loadtxt("data_meyer.txt")
 xstar = np.array([0.02, 4000, 250])
 
 t = np.linspace(data[0,0],data[-1,0],100)

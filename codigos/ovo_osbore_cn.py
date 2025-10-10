@@ -33,7 +33,7 @@ def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
             k += 1
     return k
 
-def compute_Bkj(H, first_iter=False):
+def compute_Bkj(H):
     Hs = 0.5*(H + H.T)
     eigs = np.linalg.eigvalsh(Hs)
     lambda_min = np.min(eigs)
@@ -54,13 +54,13 @@ def constraint_jac(var, g, B):
     return gradc
 
 def ovoqn(t, y):
-    epsilon = 1e-9
+    epsilon = 1e-11
     delta = 1e-4
     deltax = 1
-    theta = 0.05
+    theta = 0.1
     q = 27
     max_iter = 200
-    max_iterarmijo = 100
+    max_iterarmijo = 50
 
     m = len(t)
     xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
@@ -114,7 +114,7 @@ def ovoqn(t, y):
 
         res = minimize(lambda var: var[5], x0, method="SLSQP",
                        bounds=bounds, constraints=constraints,
-                       options={'ftol':1e-9, 'maxiter':100, 'disp':False})
+                       options={'ftol':1e-9, 'maxiter':30, 'disp':False})  # Tolerancia más relajada
 
         d_sol = res.x[:5]
         mkd = float(res.fun)
@@ -150,5 +150,5 @@ y_pred = model(t, *xk_final)
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVOQN")
 plt.legend()
-plt.savefig("figuras/ovoqn_osborne.png", bbox_inches="tight", dpi=150)
+plt.savefig("figuras/ovoqn_osborne.pdf", bbox_inches="tight")
 plt.show()

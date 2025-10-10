@@ -27,9 +27,9 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta, m):
     return k
 
 def ovo(t, y):
-    stop = 5e+0
+    stop = 2e+0
     epsilon = 1e+8
-    delta = 1e+2
+    delta = 1e+1
     theta = 0.3
     n = 4
     m = len(t)
