@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.optimize import linprog
-from tabulate import tabulate
 import matplotlib.pyplot as plt
+from tabulate import tabulate
+import time
 
 def model(t_i, x0, x1, x2):
     return x0 * np.exp(x1 / (t_i + x2))
@@ -26,28 +27,28 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta, m):
             k += 1
     return k
 
-def ovo(t, y):
+def ovo(t, y, q_value):
     stop = 2e+0
     epsilon = 1e+8
     delta = 1e+1
     theta = 0.3
     n = 4
     m = len(t)
-    q = 12
+    q = q_value
     max_iter = 100
     max_iter_armijo = 30
     iter = 1
+    fcnt = 0
 
     xk = np.array([0.02, 4000.0, 250.0])
     xktrial = np.zeros(3)
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
 
-    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta"]
-    table = []
-
     c = np.zeros(n)
     c[-1] = 1
+    
+    start_time = time.time()
 
     while iter <= max_iter:
         iter_armijo = 0
@@ -59,6 +60,8 @@ def ovo(t, y):
 
         for i in range(m):
             faux[i] = f_i(t[i], y[i], xk)
+        
+        fcnt += m
 
         indices = np.argsort(faux)
         faux_sorted = faux[indices]
@@ -77,7 +80,8 @@ def ovo(t, y):
             A[i, -1] = -1
 
         res = linprog(c, A_ub=A, b_ub=b, 
-                     bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds])
+                     bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds],
+                     method='highs')
         
         dk = res.x
         mkd = dk[-1]
@@ -94,6 +98,8 @@ def ovo(t, y):
             for i in range(m):
                 faux_trial[i] = f_i(t[i], y[i], xktrial)
             
+            fcnt += m
+            
             faux_trial_sorted = np.sort(faux_trial)
             fxktrial = faux_trial_sorted[q]
             
@@ -101,22 +107,42 @@ def ovo(t, y):
                 break
             alpha *= 0.5
 
-        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
         xk = xktrial
         iter += 1
 
-    print(tabulate(table, headers=header, tablefmt="grid"))
-    print('Solución final:', xk)
-    return xk
+    elapsed_time = time.time() - start_time
+    return xk, fxk, iter - 1, fcnt, elapsed_time
 
+# Cargar datos
 data = np.loadtxt('data_meyer.txt')
 t = data[:, 0]
 y = data[:, 1]
 
-xk_final = ovo(t, y)
-y_pred = model(t, *xk_final)
+# Ejecutar OVO para diferentes números de outliers
+num_outliers = [0, 1, 2, 3]
+m = len(t)
+results = []
 
-plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
-plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
-plt.savefig("figuras/ovo_meyer_cauchy.pdf", bbox_inches="tight", dpi=150)
+for n_out in num_outliers:
+    q_value = m - n_out - 1
+    print(f"Ejecutando OVO con {n_out} outliers (q={q_value})...")
+    xk_final, fxk, n_iter, n_fcnt, exec_time = ovo(t, y, q_value)
+    results.append([n_out, fxk, n_iter, n_fcnt, exec_time])
+    print(f"  f(x*) = {fxk:.6f}, #it = {n_iter}, #fcnt = {n_fcnt}, Time = {exec_time:.4f}s")
+
+# Mostrar tabla
+headers = ["o", "f(x*)", "#it", "#fcnt", "Time (s)"]
+print("\n" + "="*70)
+print(tabulate(results, headers=headers, tablefmt="grid", floatfmt=(".0f", ".6f", ".0f", ".0f", ".7f")))
+print("="*70)
+
+# Extraer valores para graficar
+f_values = [row[1] for row in results]
+
+# Graficar
+plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=8)
+plt.xlabel('Número de outliers activos')
+plt.ylabel('f(x*)')
+plt.xticks(num_outliers)
+plt.savefig("figuras/meyervsouts.pdf", bbox_inches = 'tight')
 plt.show()

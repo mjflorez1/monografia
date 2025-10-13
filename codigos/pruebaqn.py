@@ -122,7 +122,7 @@ def ovoqn(t, y):
         d_sol = res.x[:4]
         mkd = res.fun
 
-        if abs(mkd)<epsilon:
+        if abs(mkd) < epsilon:
             xk += d_sol
             break
 

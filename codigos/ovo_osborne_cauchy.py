@@ -27,10 +27,10 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     return k
 
 def ovo(t, y):
-    stop = 1e-11
+    stop = 1e-9
     epsilon = 3e-3
     delta = 1.8
-    theta = 0.2
+    theta = 0.5
     n = 6
     m = len(t)
     q = 27
@@ -79,8 +79,7 @@ def ovo(t, y):
             A[i, -1] = -1
 
         res = linprog(c, A_ub=A, b_ub=b, 
-                     bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds, x4_bounds, x5_bounds],
-                     method='highs')
+                     bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds, x4_bounds, x5_bounds])
         
         dk = res.x
         mkd = dk[-1]

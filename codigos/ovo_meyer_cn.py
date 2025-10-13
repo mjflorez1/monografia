@@ -18,27 +18,36 @@ def grad_f_i(ti, yi, x, grad):
     grad[2] = diff * (-x0 * x1 * z / ((ti + x2)**2))
     return grad[:]
 
-def hess_f_i(t_i, y_i, x, H):
-    s = t_i + x[2]
-    z = np.exp(x[1] / s)
-    diff = (x[0] * z) - y_i
+def hess_f_i(ti, yi, x):
+    """Hessiana analítica de f_i = 0.5*(model - yi)^2"""
+    x0, x1, x2 = x
+    denom = ti + x2
+    z = np.exp(x1 / denom)
+    r = x0 * z - yi  # residuo
 
-    J = np.zeros(3)
-    J[0] = z
-    J[1] = x[0] * z / s
-    J[2] = -x[0] * x[1] * z / (s ** 2)
+    # Precalculos
+    z_x0 = z
+    z_x1 = x0 * z / denom
+    z_x2 = -x0 * x1 * z / (denom**2)
 
-    H_r = np.zeros((3, 3))
-    H_r[0, 1] = H_r[1, 0] = z / s
-    H_r[0, 2] = H_r[2, 0] = -x[1] * z / (s ** 2)
-    H_r[1, 1] = x[0] * z / (s ** 2)
-    H_r[1, 2] = H_r[2, 1] = -x[0] * z * (s + x[1]) / (s ** 3)
-    H_r[2, 2] = x[0] * z * ((2 * x[1]) / (s ** 3) + (x[1] ** 2) / (s ** 4))
+    # Segundas derivadas del modelo m = x0 * exp(x1/(ti+x2))
+    m_x0x0 = 0.0
+    m_x0x1 = z / denom
+    m_x0x2 = -x1 * z / (denom**2)
+    m_x1x1 = x0 * z / (denom**2)
+    m_x1x2 = -x0 * x1 * z / (denom**3)
+    m_x2x2 = x0 * z * (2*x1 / (denom**3) + (x1**2) / (denom**4))
 
-    for i in range(3):
-        for j in range(3):
-            H[i, j] = J[i] * J[j] + diff * H_r[i, j]
-    return H[:]
+    # Hessiana de f_i = 0.5*(m - y)^2 => H = grad(m) * grad(m)^T + (m - y) * Hess(m)
+    g = np.array([z_x0, z_x1, z_x2])  # gradiente del modelo m
+    H_model = np.array([
+        [m_x0x0, m_x0x1, m_x0x2],
+        [m_x0x1, m_x1x1, m_x1x2],
+        [m_x0x2, m_x1x2, m_x2x2]
+    ])
+
+    H = np.outer(g, g) + r * H_model
+    return H
 
 def mount_Idelta(fovo, faux_sorted, indices, delta, Idelta, types, m):
     k = 0
@@ -112,7 +121,6 @@ def ovoqn(t, y):
             ind = Idelta[r]
             g = np.zeros(3)
             grad_f_i(t[ind], y[ind], xk, g)
-            # >>>>> CORRECCIÓN: ahora hess_f_i recibe ti, yi, x <<<<<
             H = hess_f_i(t[ind], y[ind], xk)
             Bkjs.append(compute_Bkj(H))
             grads.append(g)
@@ -173,5 +181,5 @@ y_pred = model(t, *xk_final)
 
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVOQN")
-plt.savefig("figuras/ovoqn_meyer.pdf", bbox_inches="tight", dpi=150)
+plt.savefig("figuras/ovoqn_meyer.pdf", bbox_inches="tight")
 plt.show()

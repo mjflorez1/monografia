@@ -27,3 +27,4 @@ with open("data_osborne1.txt", "w") as f:
 
 plt.plot(t,y,"o")
 plt.savefig("figuras/osborne.pdf",bbox_inches = "tight")
+plt.show()

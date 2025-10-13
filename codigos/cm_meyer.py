@@ -29,23 +29,7 @@ print(f"\nValor de la función objetivo = {res_lbfgsb.fun:.6f}")
 print(f"Número de iteraciones = {res_lbfgsb.nfev}")
 print(f"Optimización exitosa: {res_lbfgsb.success}")
 
-res_bfgs = minimize(objetivo, beta0, method='BFGS')
-
-print("\n" + "=" * 60)
-print("AJUSTE FUNCIÓN DE MEYER - BFGS (sin bounds)")
-print("=" * 60)
-print("\nCoeficientes estimados:")
-print(f"β₁ = {res_bfgs.x[0]:.6f}")
-print(f"β₂ = {res_bfgs.x[1]:.6f}")
-print(f"β₃ = {res_bfgs.x[2]:.6f}")
-print(f"\nValor de la función objetivo = {res_bfgs.fun:.6f}")
-print(f"Número de iteraciones = {res_bfgs.nfev}")
-print(f"Optimización exitosa: {res_bfgs.success}")
-print("=" * 60)
-
-res = res_lbfgsb if res_lbfgsb.fun < res_bfgs.fun else res_bfgs
-
-y_fit = meyer(res.x, t)
+y_fit = meyer(res_lbfgsb.x, t)
 
 ss_res = np.sum((y - y_fit)**2)
 ss_tot = np.sum((y - np.mean(y))**2)
@@ -53,7 +37,7 @@ r2 = 1 - (ss_res / ss_tot)
 print(f"\nR² (mejor ajuste) = {r2:.6f}")
 
 xx = np.linspace(t.min() - 5, t.max() + 5, 400)
-y_fit_xx = meyer(res.x, xx)
+y_fit_xx = meyer(res_lbfgsb.x, xx)
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14,6))
 

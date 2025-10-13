@@ -29,6 +29,7 @@ Orientador:
 # Bibliotecas esenciales
 import numpy as np
 from scipy.optimize import linprog
+import matplotlib.pyplot as plt
 
 # Definición del modelo cubico
 def model(t,x1,x2,x3,x4):
@@ -163,6 +164,7 @@ def ovo_algorithm(t,y):
         iter += 1
 
     print('Solución final: ',xk)
+    return xk
     
 
 data = np.loadtxt("data.txt")
@@ -171,4 +173,10 @@ t = data[:,0]
 y = data[:,1]
 m = len(t)
 
-ovo_algorithm(t,y)
+xk_final = ovo_algorithm(t,y)
+y_pred = model(t, *xk_final)
+
+plt.scatter(t, y, color="black", label="Datos")
+plt.plot(t, y_pred, color="magenta", label="Ajuste")
+plt.savefig("figuras/ovo_cauchy.pdf", bbox_inches="tight")
+plt.show()
