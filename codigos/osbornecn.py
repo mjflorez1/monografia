@@ -1,7 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from tabulate import tabulate
+import matplotlib.pyplot as plt
+import time
 
 def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
@@ -54,13 +55,13 @@ def constraint_jac(var, g, B):
     gradc[5] = 1.0
     return gradc
 
-def ovoqn(t, y):
-    epsilon = 1e-11
+def ovoqn(t, y, q_value):
+    epsilon = 1e-9
     delta = 1e-4
     deltax = 1
-    theta = 0.2
-    q = 27
-    max_iter = 200
+    theta = 0.3
+    q = q_value
+    max_iter = 500
     max_iterarmijo = 50
 
     m = len(t)
@@ -69,8 +70,8 @@ def ovoqn(t, y):
     Idelta = np.zeros(m, dtype=int)
     types = np.empty(m, dtype=object)
     
-    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta"]
-    table = []
+    fcnt = 0
+    start_time = time.time()
 
     iteracion = 0
     while iteracion < max_iter:
@@ -78,6 +79,8 @@ def ovoqn(t, y):
 
         for i in range(m):
             faux[i] = f_i(t[i], y[i], xk)
+        
+        fcnt += m
 
         indices = np.argsort(faux)
         faux_sorted = np.sort(faux)
@@ -118,7 +121,7 @@ def ovoqn(t, y):
 
         res = minimize(lambda var: var[5], x0, method="SLSQP",
                        bounds=bounds, constraints=constraints,
-                       options={'ftol':1e-9, 'maxiter':30, 'disp':False})  # Tolerancia más relajada
+                       options={'ftol':1e-9, 'maxiter':30, 'disp':False})
 
         d_sol = res.x[:5]
         mkd = float(res.fun)
@@ -133,26 +136,44 @@ def ovoqn(t, y):
             iter_armijo += 1
             x_trial = xk + alpha * d_sol
             faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
+            fcnt += m
             fxk_trial = np.sort(faux_trial)[q]
             if fxk_trial <= fxk + theta * alpha * mkd:
                 break
             alpha *= 0.5
             
         xk = x_trial
-        table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
 
-    print(tabulate(table, headers=header, tablefmt="grid"))
-    print("Solución final:", xk)
-    return xk
+    elapsed_time = time.time() - start_time
+    return xk, fxk, iteracion, fcnt, elapsed_time
 
 data = np.loadtxt("data_osborne1.txt")
 t = data[:,0]
 y = data[:,1]
+m = len(t)
 
-xk_final = ovoqn(t, y)
-y_pred = model(t, *xk_final)
+num_outliers = list(range(0, 6))
+results = []
 
-plt.scatter(t, y, color="magenta", alpha=0.6, label="Datos observados")
-plt.plot(t, y_pred, color="green", linewidth=2, label="Modelo ajustado OVOQN")
-plt.savefig("figuras/ovoqn_osborne.pdf", bbox_inches="tight")
+for n_out in num_outliers:
+    q_value = m - n_out - 1
+    print(f"Ejecutando OVOQN con {n_out} outliers (q={q_value})...")
+    xk_final, fxk, n_iter, n_fcnt, exec_time = ovoqn(t, y, q_value)
+    results.append([n_out, fxk, n_iter, n_fcnt, exec_time])
+    print(f"  f(x*) = {fxk:.6f}, #it = {n_iter}, #fcnt = {n_fcnt}, Time = {exec_time:.4f}s")
+
+# Mostrar tabla
+headers = ["o", "f(x*)", "#it", "#fcnt", "Time (s)"]
+print("\n" + "="*70)
+print(tabulate(results, headers=headers, tablefmt="grid", floatfmt=(".0f", ".6f", ".0f", ".0f", ".4f")))
+print("="*70)
+
+# Extraer valores para graficar
+f_values = [row[1] for row in results]
+
+plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=8)
+plt.xlabel('Número de outliers ignorados')
+plt.ylabel('f(x*)')
+plt.xticks(num_outliers)
+plt.savefig("figuras/osbornecnvsouts.pdf", bbox_inches = 'tight')
 plt.show()

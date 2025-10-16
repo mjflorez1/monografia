@@ -13,7 +13,7 @@ def objetivo(beta):
     y_modelo = meyer(beta, t)
     return 0.5 * np.sum((y - y_modelo) ** 2)
 
-beta0 = [2.5, 6000, 350]
+beta0 = [0.02, 4000, 250]
 
 bounds = [(0.01, 10), (1000, 10000), (100, 600)]
 res_lbfgsb = minimize(objetivo, beta0, method='L-BFGS-B', bounds=bounds)

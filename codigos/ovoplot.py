@@ -146,7 +146,7 @@ print("="*70)
 f_values = [row[1] for row in results]
 
 plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=8)
-plt.xlabel('Número de outliers activos')
+plt.xlabel('Número de outliers ignorados')
 plt.ylabel('f(x*)')
 plt.xticks(num_outliers)
 plt.savefig("figuras/cauchyovo.pdf", bbox_inches = 'tight')
