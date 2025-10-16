@@ -19,9 +19,30 @@ def grad_f_i(ti, yi, x, grad):
     return grad[:]
 
 def hess_f_i(ti, yi, x):
-    grad = np.zeros(3)
-    grad_f_i(ti, yi, x, grad)
-    H = np.outer(grad, grad)
+    x0, x1, x2 = x
+    t2 = ti + x2
+    exp_val = np.exp(x1 / t2)
+    r = model(ti, x0, x1, x2) - yi
+    
+    # Gradientes
+    g0 = exp_val
+    g1 = x0 * exp_val / t2
+    g2 = -x0 * x1 * exp_val / (t2**2)
+    
+    # Hessiano exacto
+    H = np.zeros((3, 3))
+    H[0,0] = g0 * g0  # d²f/dx0²
+    H[0,1] = g0 * g1 + r * (exp_val / t2)  # d²f/dx0dx1
+    H[0,2] = g0 * g2 + r * (-x1 * exp_val / (t2**2))  # d²f/dx0dx2
+    
+    H[1,0] = H[0,1]
+    H[1,1] = g1 * g1 + r * (x0 * exp_val / (t2**2))  # d²f/dx1²
+    H[1,2] = g1 * g2 + r * (-x0 * exp_val / (t2**2) - x0 * x1 * exp_val / (t2**3))  # d²f/dx1dx2
+    
+    H[2,0] = H[0,2]
+    H[2,1] = H[1,2]
+    H[2,2] = g2 * g2 + r * (2 * x0 * x1 * exp_val / (t2**3) + x0 * x1**2 * exp_val / (t2**4))  # d²f/dx2²
+    
     return H
 
 def mount_Idelta(fovo, faux, indices, delta, Idelta, types, m):
@@ -56,7 +77,7 @@ def constraint_jac(var, g, B):
 
 def ovoqn(t, y):
     epsilon = 1e-3
-    delta = 1e+7
+    delta = 1e+4  # REDUCIDO de 1e+7 a 1e+3
     deltax = 100
     theta = 0.01
     q = 12
@@ -95,10 +116,22 @@ def ovoqn(t, y):
             ind = Idelta[r]
             g = np.zeros(3)
             grad_f_i(t[ind], y[ind], xk, g)
-            H = hess_f_i(t[ind], y[ind], xk)
+            H = hess_f_i(t[ind], y[ind], xk)  # AHORA USA EL HESSIANO CORRECTO
             Bkjs.append(compute_Bkj(H))
             grads.append(g)
             constr_types.append(types[r])
+
+        # Calcular gradiente de la función OVO para Armijo
+        grad_ovo = np.zeros(3)
+        count = 0
+        for i in range(m):
+            if abs(faux[i] - fxk) <= delta:
+                g_temp = np.zeros(3)
+                grad_f_i(t[i], y[i], xk, g_temp)
+                grad_ovo += g_temp
+                count += 1
+        if count > 0:
+            grad_ovo /= count
 
         x0 = np.zeros(4)
         bounds = [(-deltax, deltax),
@@ -107,11 +140,12 @@ def ovoqn(t, y):
                   (None, 0.0)]
 
         constraints = []
-        for g, B, ctype in zip(grads, Bkjs, constr_types):
+        # CORREGIDO: problema de late binding en lambdas
+        for i, (g, B, ctype) in enumerate(zip(grads, Bkjs, constr_types)):
             constraints.append({
                 'type': ctype,
-                'fun': lambda var, g=g, B=B: constraint_fun(var, g, B),
-                'jac': lambda var, g=g, B=B: constraint_jac(var, g, B)
+                'fun': lambda var, g_i=g, B_i=B: constraint_fun(var, g_i, B_i),
+                'jac': lambda var, g_i=g, B_i=B: constraint_jac(var, g_i, B_i)
             })
 
         res = minimize(lambda var: var[3], x0, method="SLSQP",
@@ -125,15 +159,19 @@ def ovoqn(t, y):
             xk += d_sol
             break
         
+        # CORREGIDO: condición de Armijo con gradiente real
         alpha = 1
         iter_armijo = 0
+        grad_dot_d = np.dot(grad_ovo, d_sol)
+        
         while iter_armijo < max_iterarmijo:
             iter_armijo += 1
             x_trial = xk + alpha * d_sol
             faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
             fxk_trial = np.sort(faux_trial)[q]
             
-            if fxk_trial <= fxk + theta * alpha * mkd:
+            # Usa grad_dot_d en lugar de mkd
+            if fxk_trial <= fxk + theta * alpha * grad_dot_d:
                 xk = x_trial
                 break
             
@@ -154,4 +192,8 @@ y_pred = model(t, *xk_final)
 
 plt.scatter(t, y, color="magenta", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="green", linewidth=2, label="Modelo ajustado OVOQN")
+plt.legend()
+plt.xlabel("t")
+plt.ylabel("y")
+plt.title("Ajuste del modelo de Meyer usando OVOQN")
 plt.show()

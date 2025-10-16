@@ -28,14 +28,14 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta, m):
 
 def ovo(t, y):
     stop = 2e+0
-    epsilon = 1e+8
-    delta = 1e+1
-    theta = 0.3
+    epsilon = 3e+3
+    delta = 10
+    theta = 0.2
     n = 4
     m = len(t)
     q = 12
-    max_iter = 100
-    max_iter_armijo = 30
+    max_iter = 200
+    max_iter_armijo = 50
     iter = 1
 
     xk = np.array([0.02, 4000.0, 250.0])
@@ -64,7 +64,7 @@ def ovo(t, y):
         faux_sorted = faux[indices]
         fxk = faux_sorted[q]
 
-        nconst = mount_Idelta(fxk, faux, indices, epsilon, Idelta, m)
+        nconst = mount_Idelta(fxk, faux, indices, epsilon * max(abs(fxk), 1.0), Idelta, m)
 
         A = np.zeros((nconst, n))
         b = np.zeros(nconst)
@@ -118,5 +118,5 @@ y_pred = model(t, *xk_final)
 
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
 plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
-plt.savefig("figuras/ovo_meyer_cauchy.pdf", bbox_inches="tight", dpi=150)
+#plt.savefig("figuras/ovo_meyer_cauchy.pdf", bbox_inches="tight", dpi=150)
 plt.show()
