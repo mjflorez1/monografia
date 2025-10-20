@@ -30,7 +30,6 @@ tt = np.linspace(t.min()-0.2, t.max()+0.2, 400)
 Xtt = np.vstack([np.ones_like(tt), tt, tt**2, tt**3]).T
 y_ols_tt = Xtt @ beta_ols
 
-plt.figure(figsize=(8,5))
 plt.scatter(t, y, label='datos (con outliers)', marker='o',color='r')
 plt.plot(tt, y_ols_tt, label='ajuste OLS', linewidth=1.5)
 plt.xlabel('t')

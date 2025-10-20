@@ -152,7 +152,7 @@ results = []
 outliers_list = []
 f_values = []
 
-for o in range(4):
+for o in range(7):
     q = m - o - 1
     
     start_time = time.time()
@@ -169,5 +169,6 @@ print(tabulate(results, headers=headers, tablefmt="grid", floatfmt=(".0f", ".6e"
 plt.plot(outliers_list, f_values, 'o-', linewidth=2, markersize=8, color='blue')
 plt.xlabel('Número de outliers ignorados', fontsize=12)
 plt.ylabel('f(x*)', fontsize=12)
+#plt.yscale("log")
 plt.savefig("figuras/cngaussvsouts_ovoqn.pdf", bbox_inches='tight')
 plt.show()

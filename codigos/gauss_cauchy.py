@@ -101,7 +101,7 @@ results = []
 outliers_list = []
 f_values = []
 
-for o in range(4):
+for o in range(9):
     q = m - o - 1
     
     start_time = time.time()

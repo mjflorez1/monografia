@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 import os
 
-# === Modelo de Osborne 1 ===
+# ==============================
+# Modelo de Osborne 1
+# ==============================
 def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
 
@@ -20,7 +22,6 @@ def grad_f_i(t_i, y_i, x, grad):
     grad[4] = diff * -t_i * x[2] * np.exp(-t_i * x[4])
     return grad
 
-# === Construcción de I_delta ===
 def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     k = 0
     for i in range(len(faux)):
@@ -29,7 +30,9 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
             k += 1
     return k
 
-# === Algoritmo OVO ===
+# ==============================
+# Algoritmo OVO
+# ==============================
 def ovo(t, y):
     stop = 1e-8
     epsilon = 3e-3
@@ -38,6 +41,7 @@ def ovo(t, y):
     n = 6
     m = len(t)
     q = 27
+
     max_iter = 200
     max_iter_armijo = 35
     iter = 1
@@ -53,14 +57,8 @@ def ovo(t, y):
     c = np.zeros(n)
     c[-1] = 1
 
-    while iter <= max_iter:
+    while iter <= max_iter:    
         iter_armijo = 0
-        x0_bounds = (-delta, delta)
-        x1_bounds = (-delta, delta)
-        x2_bounds = (-delta, delta)
-        x3_bounds = (-delta, delta)
-        x4_bounds = (-delta, delta)
-        x5_bounds = (None, 0)
 
         for i in range(m):
             faux[i] = f_i(t[i], y[i], xk)
@@ -69,9 +67,10 @@ def ovo(t, y):
         faux_sorted = faux[indices]
         fxk = faux_sorted[q]
         nconst = mount_Idelta(fxk, faux, indices, epsilon, Idelta)
-
+        
         A = np.zeros((nconst, n))
         b = np.zeros(nconst)
+
         for i in range(nconst):
             ind = Idelta[i]
             grad = np.zeros(5)
@@ -79,8 +78,11 @@ def ovo(t, y):
             A[i, :-1] = grad
             A[i, -1] = -1
 
-        res = linprog(c, A_ub=A, b_ub=b,
-                      bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds, x4_bounds, x5_bounds])
+        res = linprog(
+            c, A_ub=A, b_ub=b, 
+            bounds=[(-delta, delta), (-delta, delta), (-delta, delta), (-delta, delta), (-delta, delta), (None, 0)]
+        )
+        
         dk = res.x
         mkd = dk[-1]
         if abs(mkd) < stop:
@@ -89,77 +91,70 @@ def ovo(t, y):
         alpha = 1
         while iter_armijo <= max_iter_armijo:
             iter_armijo += 1
-            xktrial = xk + alpha * dk[:-1]
+            xktrial = xk + (alpha * dk[:-1])
             faux_trial = np.array([f_i(t[i], y[i], xktrial) for i in range(m)])
             fxktrial = np.sort(faux_trial)[q]
-            if fxktrial <= fxk + theta * alpha * mkd:
+            if fxktrial <= fxk + (theta * alpha * mkd):
                 break
             alpha *= 0.5
 
         table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
         xk = xktrial
         iter += 1
-
+    
     print("\n" + "=" * 60)
-    print("RESULTADOS DEL MÉTODO OVO")
+    print("RESULTADOS MÉTODO OVO")
     print("=" * 60)
     print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)
     return xk
 
-# === Ajuste clásico con L-BFGS-B ===
+# ==============================
+# Ajuste clásico L-BFGS-B
+# ==============================
 def ajuste_lbfgsb(t, y):
     def objetivo(beta):
         return 0.5 * np.sum((y - model(t, *beta)) ** 2)
+
     beta0 = [0.5, 1.5, -1.0, 0.01, 0.02]
     bounds = [(-2, 2), (-2, 2), (-2, 2), (0, 1), (0, 1)]
     res = minimize(objetivo, beta0, method='L-BFGS-B', bounds=bounds)
 
     print("\n" + "=" * 60)
-    print("AJUSTE FUNCIÓN DE OSBORNE 1 - L-BFGS-B")
+    print("AJUSTE CLÁSICO L-BFGS-B")
     print("=" * 60)
     for i, b in enumerate(res.x, 1):
         print(f"β{i} = {b:.6f}")
-    print(f"\nValor de la función objetivo = {res.fun:.6e}")
-    print(f"Número de evaluaciones = {res.nfev}")
-    print(f"Optimización exitosa: {res.success}")
+    print(f"\nValor función objetivo = {res.fun:.6e}")
+    print(f"Éxito optimización: {res.success}")
     print(f"Mensaje: {res.message}")
 
-    y_fit = model(t, *res.x)
-    ss_res = np.sum((y - y_fit) ** 2)
-    ss_tot = np.sum((y - np.mean(y)) ** 2)
-    r2 = 1 - ss_res / ss_tot
-    print(f"\nR² (ajuste) = {r2:.6f}")
     return res.x
 
-# === Ejecución y gráficas ===
+# ==============================
+# Ejecución y gráfica comparativa
+# ==============================
 os.makedirs("figuras", exist_ok=True)
 data = np.loadtxt("data_osborne1.txt")
-t, y = data[:, 0], data[:, 1]
+t = data[:, 0]
+y = data[:, 1]
 
 # OVO
-xk_ovo = ovo(t, y)
-y_pred_ovo = model(t, *xk_ovo)
-
-plt.figure()
-plt.scatter(t, y, color="red", s=40, label="Datos observados")
-plt.plot(t, y_pred_ovo, color="green", lw=2, label="Ajuste modelo OVO")
-plt.xlabel("t")
-plt.ylabel("y")
-plt.legend()
-plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight")
-plt.show()
+x_ovo = ovo(t, y)
+y_ovo = model(t, *x_ovo)
 
 # L-BFGS-B
-xk_lbfgsb = ajuste_lbfgsb(t, y)
+x_lbfgsb = ajuste_lbfgsb(t, y)
 tt = np.linspace(t.min(), t.max(), 400)
-y_pred_lbfgsb = model(tt, *xk_lbfgsb)
+y_lbfgsb = model(tt, *x_lbfgsb)
 
+# ==============================
+# GRAFICAR AMBOS AJUSTES
+# ==============================
 plt.figure()
-plt.scatter(t, y, color="red", s=40, label="Datos con ruido")
-plt.plot(tt, y_pred_lbfgsb, color="green", lw=2, label="Ajuste modelo Osborne 1 (L-BFGS-B)")
-plt.xlabel("t")
-plt.ylabel("y")
-plt.legend()
-#plt.savefig("figuras/osborne1_ruidoso.pdf", bbox_inches="tight")
+plt.scatter(t, y, color="gray", s=40, alpha=0.7, label="$Observaciones$")
+plt.plot(tt, y_lbfgsb, "m-", lw=2, label="$OLS$")
+plt.plot(t, y_ovo, "y-", lw=2, label="$OVO$")
+plt.legend(loc="upper right")
+plt.savefig("figuras/comparacion_osborne.pdf", bbox_inches="tight")
 plt.show()

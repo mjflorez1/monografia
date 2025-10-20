@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import linprog
 from tabulate import tabulate
 import matplotlib.pyplot as plt
-import time
 
 def model(t, x0, x1, x2):
     return x0 * np.exp((-x1 * ((t - x2)**2)) / 2)
@@ -39,7 +38,7 @@ def ovo(t, y):
     max_iter = 100
     max_iter_armijo = 30
 
-    xk = np.array([1.0, 2.0, 1.0])   # mejor punto inicial
+    xk = np.array([1.0, 2.0, 1.0])
     faux = np.zeros(m)
 
     header = ["Iter", "f(xk)", "IterArmijo", "Mk(d)", "ncons", "Idelta"]

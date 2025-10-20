@@ -119,7 +119,7 @@ t = data[:, 0]
 y = data[:, 1]
 m = len(t)
 
-num_outliers = list(range(0, 6))
+num_outliers = list(range(0, 9))
 results = []
 
 for n_out in num_outliers:
@@ -142,4 +142,6 @@ plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=8)
 plt.xlabel('Número de outliers')
 plt.ylabel('f(x*)')
 plt.xticks(num_outliers)
+#plt.yscale("log")
+plt.savefig("figuras/osbornevsouts.pdf", bbox_inches = 'tight')
 plt.show()

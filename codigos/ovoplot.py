@@ -126,7 +126,7 @@ t = data[:,0]
 y = data[:,1]
 m = len(t)
 
-num_outliers = list(range(0, 11))
+num_outliers = list(range(0, 20))
 results = []
 
 for n_out in num_outliers:
@@ -149,5 +149,6 @@ plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=8)
 plt.xlabel('Número de outliers ignorados')
 plt.ylabel('f(x*)')
 plt.xticks(num_outliers)
+#plt.yscale("log")
 plt.savefig("figuras/cauchyovo.pdf", bbox_inches = 'tight')
 plt.show()
