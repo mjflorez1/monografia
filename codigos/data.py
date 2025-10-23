@@ -1,5 +1,12 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import random
+
+size_img = 0.6
+plt.rcParams.update({'font.size': 11})
+plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
 
 # Definimos el modelo cubico
 def model(t,x1,x2,x3,x4):
@@ -22,3 +29,7 @@ for i in range(16,m):
 with open("txt/data.txt","w") as f:    
     for i in range(m):
         f.write(f"{t[i]} {y[i]}\n")
+        
+plt.plot(t,y,"o",ms=3)
+plt.savefig("figuras/cubic.pdf", bbox_inches="tight")
+plt.show()

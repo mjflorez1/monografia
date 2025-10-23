@@ -1,6 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+size_img = 0.6
+plt.rcParams.update({'font.size': 11})
+plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
 n = 3
 m = 15
 
@@ -18,6 +24,6 @@ with open("txt/data_gauss.txt", "w") as f:
     for i in range(m):
         f.write(f"{t[i]} {y[i]}\n")
 
-plt.plot(t,y,"o")
+plt.plot(t,y,"o",ms=3)
 plt.savefig("figuras/gauss.pdf", bbox_inches="tight")
 plt.show()

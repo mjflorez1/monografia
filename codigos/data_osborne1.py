@@ -1,6 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+size_img = 0.6
+plt.rcParams.update({'font.size': 11})
+plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
 n = 5
 m = 33
 
@@ -25,6 +31,6 @@ with open("txt/data_osborne1.txt", "w") as f:
         f.write(f'{t[i]} {y[i]}\n')
 
 
-plt.plot(t,y,"o")
+plt.plot(t,y,"o",ms=3)
 plt.savefig("figuras/osborne.pdf",bbox_inches = "tight")
 plt.show()
