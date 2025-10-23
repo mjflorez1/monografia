@@ -11,9 +11,9 @@ plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-sol_ls = np.loadtxt("sol_cubic_ls.txt")
-sol_cauchy = np.loadtxt("sol_cubic_cauchy.txt")
-data = np.loadtxt("data.txt")
+sol_ls = np.loadtxt("txt/sol_cubic_ls.txt")
+sol_cauchy = np.loadtxt("txt/sol_cubic_cauchy.txt")
+data = np.loadtxt("txt/data.txt")
 
 t = np.linspace(data[:,0][0],data[:,0][-1],1000)
 plt.plot(t,model(t,*sol_ls),lw=1,label="OLS")

@@ -20,7 +20,7 @@ y[14] += noise
 
 t = np.array([10*(i-1) for i in range(1, m+1)])
 
-with open("data_osborne1.txt", "w") as f:
+with open("txt/data_osborne1.txt", "w") as f:
     for i in range(m):
         f.write(f'{t[i]} {y[i]}\n')
 

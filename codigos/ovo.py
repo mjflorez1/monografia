@@ -162,12 +162,12 @@ def ovo_algorithm(t,y):
 
         xk = xktrial
         iter += 1
-        np.savetxt('sol_cubic_cauchy.txt',xk, fmt="%.6f")
+        np.savetxt('txt/sol_cubic_cauchy.txt',xk, fmt="%.6f")
 
     print('Solución final: ',xk)
     return xk    
 
-data = np.loadtxt("data.txt")
+data = np.loadtxt("txt/data.txt")
 
 t = data[:,0]
 y = data[:,1]

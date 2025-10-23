@@ -14,7 +14,7 @@ y[4] += noise
 y[5] += noise
 y[6] += noise
 
-with open("data_gauss.txt", "w") as f:
+with open("txt/data_gauss.txt", "w") as f:
     for i in range(m):
         f.write(f"{t[i]} {y[i]}\n")
 

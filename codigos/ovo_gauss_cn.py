@@ -141,13 +141,13 @@ def ovoqn(t, y):
             
         xk = x_trial
         table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
-        np.savetxt('sol_gauss_cn.txt',xk,fmt='%.6f')
+        np.savetxt('txt/sol_gauss_cn.txt',xk,fmt='%.6f')
 
     print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)
     return xk
 
-data = np.loadtxt("data_gauss.txt")
+data = np.loadtxt("txt/data_gauss.txt")
 t = data[:, 0]
 y = data[:, 1]
 

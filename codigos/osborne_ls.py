@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 def model(t, x1, x2, x3, x4, x5):
     return x1 + (x2 * np.exp(-t * x4)) + (x3 * np.exp(-t * x5))
 
-data = np.loadtxt("data_osborne1.txt")
+data = np.loadtxt("txt/data_osborne1.txt")
 t = data[:,0]
 y = data[:,1]
 
@@ -21,4 +21,4 @@ x0 = [0.5, 1.5, -1.0, 0.01, 0.02]
 bounds = [(-1, 1)] * 5
 res = minimize(objetivo, x0, method='L-BFGS-B', bounds=bounds)
 
-np.savetxt("sol_osborne_ls.txt", res.x, fmt="%.6f")  
+np.savetxt("txt/sol_osborne_ls.txt", res.x, fmt="%.6f")  

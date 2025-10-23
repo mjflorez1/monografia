@@ -6,7 +6,7 @@ def model(t,x1,x2,x3,x4):
     res = x1 + (x2 * t) + x3 * (t**2) + x4 * (t**3)
     return res
 
-data = np.loadtxt("data.txt")
+data = np.loadtxt("txt/data.txt")
 t = data[:,0]
 y = data[:,1]
 
@@ -22,6 +22,6 @@ x0 = [-1, -2, 1, -1]
 bounds = [(-10, 10)] * 4
 res = minimize(objetivo, x0, method='L-BFGS-B', bounds=bounds)
 
-np.savetxt("sol_cubic_ls.txt", res.x, fmt="%.6f")  
+np.savetxt("txt/sol_cubic_ls.txt", res.x, fmt="%.6f")  
 
 

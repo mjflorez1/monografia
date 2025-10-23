@@ -106,13 +106,13 @@ def ovo(t, y):
         table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
         xk = xktrial
         iter += 1
-        np.savetxt('sol_osborne_cauchy.txt',xk,fmt='%.6f')
+        np.savetxt('txt/sol_osborne_cauchy.txt',xk,fmt='%.6f')
     
     print(tabulate(table, headers=header, tablefmt="grid"))
     print('Solución final:', xk)
     return xk
 
-data = np.loadtxt("data_osborne1.txt")
+data = np.loadtxt("txt/data_osborne1.txt")
 t = data[:, 0]
 y = data[:, 1]
 
