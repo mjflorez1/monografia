@@ -19,8 +19,8 @@ t = np.linspace(data[:,0][0],data[:,0][-1],1000)
 plt.plot(t,model(t,*sol_ls),lw=1,label="OLS")
 plt.plot(t,model(t,*sol_cauchy),lw=1,label="OVO tipo Cauchy")
 plt.plot(data[:,0],data[:,1],"ok",ms=3,label="Datos")
-plt.savefig("figuras/cubic_cauchy.pdf",bbox_inches="tight")
 plt.legend(fontsize=6,loc="best")
+plt.savefig("figuras/cubic_cauchy.pdf",bbox_inches="tight")
 plt.show()
 
 
