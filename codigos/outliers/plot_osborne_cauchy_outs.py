@@ -26,7 +26,7 @@ plt.plot(t,model(t,*sol_3),lw=1,label="o = 3")
 plt.plot(t,model(t,*sol_4),lw=1,label="o = 4")
 plt.plot(t,model(t,*sol_5),lw=1,label="o = 5")
 plt.plot(data[:,0],data[:,1],"ok",ms=3)
-plt.savefig("figuras/osborne_cauchy_outs.pdf",bbox_inches="tight")
 plt.legend(fontsize=6,loc="lower left")
+plt.savefig("figuras/osborne_cauchy_outs.pdf",bbox_inches="tight")
 plt.show()
 

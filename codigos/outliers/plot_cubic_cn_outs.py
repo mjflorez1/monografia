@@ -37,8 +37,8 @@ plt.plot(t,model(t,*sol_8),lw=1,label="o = 8")
 plt.plot(t,model(t,*sol_9),lw=1,label="o = 9")
 plt.plot(t,model(t,*sol_10),lw=1,label="o = 10")
 plt.plot(data[:,0],data[:,1],"ok",ms=3)
-plt.savefig("figuras/cubic_cn_outs.pdf",bbox_inches="tight")
 plt.legend(fontsize=4,loc="upper left")
+plt.savefig("figuras/cubic_cn_outs.pdf",bbox_inches="tight")
 plt.show()
 
 
