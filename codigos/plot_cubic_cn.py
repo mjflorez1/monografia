@@ -12,15 +12,13 @@ plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
 sol_ls = np.loadtxt("sol_cubic_ls.txt")
-sol_cauchy = np.loadtxt("sol_cubic_cauchy.txt")
+sol_cn = np.loadtxt("sol_cubic_cn.txt")
 data = np.loadtxt("data.txt")
 
 t = np.linspace(data[:,0][0],data[:,0][-1],1000)
 plt.plot(t,model(t,*sol_ls),lw=1,label="OLS")
-plt.plot(t,model(t,*sol_cauchy),lw=1,label="OVO tipo Cauchy")
+plt.plot(t,model(t,*sol_cn),lw=1,label="OVO tipo Cuasi-Newton")
 plt.plot(data[:,0],data[:,1],"ok",ms=3,label="Datos")
-plt.savefig("figuras/cubic_cauchy.pdf",bbox_inches="tight")
+plt.savefig("figuras/cubic_cn.pdf",bbox_inches="tight")
 plt.legend(fontsize=6,loc="best")
 plt.show()
-
-

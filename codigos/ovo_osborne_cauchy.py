@@ -106,6 +106,7 @@ def ovo(t, y):
         table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
         xk = xktrial
         iter += 1
+        np.savetxt('sol_osborne_cauchy.txt',xk,fmt='%.6f')
     
     print(tabulate(table, headers=header, tablefmt="grid"))
     print('Solución final:', xk)

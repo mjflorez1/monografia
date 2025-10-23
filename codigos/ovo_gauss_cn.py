@@ -141,6 +141,7 @@ def ovoqn(t, y):
             
         xk = x_trial
         table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
+        np.savetxt('sol_gauss_cn.txt',xk,fmt='%.6f')
 
     print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)

@@ -93,6 +93,7 @@ def ovo(t, y):
 
         xk = xk + alpha * dk[:3]
         table.append([iter, fxk, iter_armijo, mkd, nconst, Idelta[:5].tolist()])
+        np.savetxt('sol_gauss_cauchy.txt',xk,fmt='%.6f')
 
     print(tabulate(table, headers=header, tablefmt="grid", floatfmt=".6e"))
     print(f'Solución final: x0={xk[0]}, x1={xk[1]}, x2={xk[2]}')
