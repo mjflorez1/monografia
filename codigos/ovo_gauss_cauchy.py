@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import linprog
 from tabulate import tabulate
 import matplotlib.pyplot as plt
+import time
 
 def model(t, x0, x1, x2):
     return x0 * np.exp((-x1 * ((t - x2)**2)) / 2)
@@ -34,20 +35,22 @@ def ovo(t, y):
     theta = 0.2
     n = 4
     m = len(t)
-    q = 11
+    q = 9
     max_iter = 100
     max_iter_armijo = 30
 
     xk = np.array([1.0, 2.0, 1.0])
     faux = np.zeros(m)
 
-    header = ["Iter", "f(xk)", "IterArmijo", "Mk(d)", "ncons", "Idelta"]
+    header = ["Iter", "f(xk)", "IterArmijo", "Mk(d)", "ncons", "Idelta", "Tiempo (s)"]
     table = []
 
     c = np.zeros(n)
     c[-1] = 1
 
     for iter in range(1, max_iter + 1):
+        start_time = time.time()
+
         for i in range(m):
             faux[i] = f_i(t[i], y[i], xk)
 
@@ -69,11 +72,7 @@ def ovo(t, y):
 
         bounds = [(-delta, delta)] * 3 + [(None, 0)]
         res = linprog(c, A_ub=A, b_ub=b, bounds=bounds, method='highs')
-
-        if not res.success:
-            print(f"Iter {iter}: linprog falló ({res.message})")
-            break
-
+        
         dk = res.x
         mkd = dk[3]
 
@@ -92,23 +91,28 @@ def ovo(t, y):
             alpha *= 0.5
 
         xk = xk + alpha * dk[:3]
-        table.append([iter, fxk, iter_armijo, mkd, nconst, Idelta[:5].tolist()])
-        np.savetxt('txt/sol_gauss_cauchy.txt',xk,fmt='%.6f')
+
+        elapsed = time.time() - start_time
+        table.append([iter, fxk, iter_armijo, mkd, nconst, Idelta[:5].tolist(), elapsed])
+        np.savetxt('txt/sol_gauss_cauchy.txt', xk, fmt='%.6f')
 
     print(tabulate(table, headers=header, tablefmt="grid", floatfmt=".6e"))
     print(f'Solución final: x0={xk[0]}, x1={xk[1]}, x2={xk[2]}')
+    print(fxk)
     return xk
 
+# --- Datos y ejecución ---
 data = np.loadtxt('txt/data_gauss.txt')
 t = data[:, 0]
 y = data[:, 1]
 
 xk_final = ovo(t, y)
 
+# --- Gráfica ---
 tt = np.linspace(t.min(), t.max(), 400)
 y_smooth = model(tt, *xk_final)
 
 plt.scatter(t, y, color="blue", alpha=0.6, s=50, label="Datos observados", zorder=3)
 plt.plot(tt, y_smooth, color="red", linewidth=2, label="Modelo ajustado OVO", zorder=2)
-plt.savefig("figuras/ovo_cauchy_gauss.pdf", bbox_inches = 'tight')
+#plt.savefig("figuras/ovo_cauchy_gauss.pdf", bbox_inches='tight')
 plt.show()

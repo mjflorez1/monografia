@@ -23,6 +23,6 @@ plt.plot(t,model(t,*sol_2),lw=1,label="o = 2")
 plt.plot(t,model(t,*sol_3),lw=1,label="o = 3")
 plt.plot(data[:,0],data[:,1],"ok",ms=3)
 plt.legend(fontsize=6,loc="upper left")
-plt.savefig("figuras/gauss_cauchy_outs.pdf",bbox_inches="tight")
+plt.savefig("figuras/gauss_cauchy_outliers.pdf",bbox_inches="tight")
 plt.show()
 

@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import linprog
 import matplotlib.pyplot as plt
 from tabulate import tabulate
+import time
 
 def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
@@ -33,8 +34,7 @@ def ovo(t, y):
     theta = 0.5
     n = 6
     m = len(t)
-    q = 27
-
+    q = 24
     max_iter = 200
     max_iter_armijo = 35
     iter = 1
@@ -44,12 +44,13 @@ def ovo(t, y):
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
     
-    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta"]
+    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta, Tiempo (s)"]
     table = []
 
     c = np.zeros(n)
     c[-1] = 1
 
+    start_time = time.time()
     while iter <= max_iter:    
         iter_armijo = 0
         
@@ -103,13 +104,15 @@ def ovo(t, y):
                 break
             alpha *= 0.5
 
-        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
         xk = xktrial
         iter += 1
+        elapsed = time.time() - start_time
+        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist(),elapsed])
         np.savetxt('txt/sol_osborne_cauchy.txt',xk,fmt='%.6f')
     
     print(tabulate(table, headers=header, tablefmt="grid"))
     print('Solución final:', xk)
+    print(fxk)
     return xk
 
 data = np.loadtxt("txt/data_osborne1.txt")

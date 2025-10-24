@@ -4,6 +4,12 @@ from tabulate import tabulate
 import matplotlib.pyplot as plt
 import time
 
+size_img = 0.6
+plt.rcParams.update({'font.size': 11})
+plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
 def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
 
@@ -147,7 +153,7 @@ def ovoqn(t, y, q_value):
     elapsed_time = time.time() - start_time
     return xk, fxk, iteracion, fcnt, elapsed_time
 
-data = np.loadtxt("data_osborne1.txt")
+data = np.loadtxt("txt/data_osborne1.txt")
 t = data[:,0]
 y = data[:,1]
 m = len(t)
@@ -171,9 +177,10 @@ print("="*70)
 # Extraer valores para graficar
 f_values = [row[1] for row in results]
 
-plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=8)
-plt.xlabel('Número de outliers ignorados')
-plt.ylabel('f(x*)')
+plt.plot(num_outliers, f_values, 'o-', linewidth=1, markersize=3)
+plt.xlabel('Número de outliers ($o$)')
+plt.ylabel('$f(x^*)$')
+plt.yscale('log')
 plt.xticks(num_outliers)
 plt.savefig("figuras/osbornecnvsouts.pdf", bbox_inches = 'tight')
 plt.show()

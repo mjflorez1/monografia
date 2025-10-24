@@ -45,9 +45,11 @@ def ovo(t, y, q):
         faux = np.array([f_i(t[i], y[i], xk) for i in range(m)])
         fcnt += m
         
-        indices = np.argsort(faux)
+        # Orden descendente: los mayores f_i primero (outliers arriba)
+        indices = np.argsort(-faux)
         faux_sorted = faux[indices]
-        fxk = faux_sorted[q]
+        fxk = faux_sorted[q]  # q = número de outliers ignorados
+        
         Idelta = mount_Idelta(fxk, faux, indices, epsilon, m)
         nconst = len(Idelta)
         
@@ -83,7 +85,8 @@ def ovo(t, y, q):
             xktrial = xk + alpha * dk[:3]
             faux_trial = np.array([f_i(ti, yi, xktrial) for ti, yi in zip(t, y)])
             fcnt += m
-            fxktrial = np.sort(faux_trial)[q]
+            # usar el mismo orden descendente
+            fxktrial = np.sort(faux_trial)[::-1][q]
             if fxktrial <= fxk + theta * alpha * mkd:
                 break
             alpha *= 0.5
@@ -92,18 +95,19 @@ def ovo(t, y, q):
     
     return xk, fxk, iter, fcnt
 
-data = np.loadtxt('data_gauss.txt')
+# --- Datos ---
+data = np.loadtxt('txt/data_gauss.txt')
 t = data[:, 0]
 y = data[:, 1]
-
 m = len(t)
+
+# --- Bucle de ejecución ignorando outliers ---
 results = []
 outliers_list = []
 f_values = []
 
-for o in range(9):
-    q = m - o - 1
-    
+for o in range(9):  # o = número de outliers ignorados
+    q = o
     start_time = time.time()
     xk_final, fxk, num_iter, fcnt = ovo(t, y, q)
     elapsed_time = time.time() - start_time
@@ -113,10 +117,14 @@ for o in range(9):
     f_values.append(fxk)
 
 headers = ["o", "f(x*)", "#it", "#fcnt", "Time (s)", "x0", "x1", "x2"]
-print(tabulate(results, headers=headers, tablefmt="grid", floatfmt=(".0f", ".6e", ".0f", ".0f", ".6f", ".6f", ".6f", ".6f")))
+print(tabulate(results, headers=headers, tablefmt="grid",
+               floatfmt=(".0f", ".6e", ".0f", ".0f", ".6f", ".6f", ".6f", ".6f")))
 
+# --- Gráfica logarítmica ---
 plt.plot(outliers_list, f_values, 'o-', linewidth=2, markersize=8, color='blue')
-plt.xlabel('Número de outliers ignorados', fontsize=12)
-plt.ylabel('f(x*)', fontsize=12)
-plt.savefig("figuras/gausscauchyvsouts.pdf", bbox_inches='tight')
+plt.xlabel('Número de outliers ($o$)', fontsize=12)
+plt.ylabel('$f(x^*)$', fontsize=12)
+plt.yscale('log')
+plt.grid(True, which="both", ls="--", alpha=0.6)
+#plt.savefig("figuras/gausscauchyvsouts.pdf", bbox_inches='tight')
 plt.show()

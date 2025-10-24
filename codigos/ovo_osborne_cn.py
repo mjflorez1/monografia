@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from tabulate import tabulate
+import time
 
 def model(t, x0, x1, x2, x3, x4):
     return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
@@ -59,7 +60,7 @@ def ovoqn(t, y):
     delta = 1e-4
     deltax = 1
     theta = 0.2
-    q = 27
+    q = 24
     max_iter = 200
     max_iterarmijo = 50
 
@@ -69,10 +70,11 @@ def ovoqn(t, y):
     Idelta = np.zeros(m, dtype=int)
     types = np.empty(m, dtype=object)
     
-    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta"]
+    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta, Tiempo (s)"]
     table = []
 
     iteracion = 0
+    start_time = time.time()
     while iteracion < max_iter:
         iteracion += 1
 
@@ -139,11 +141,13 @@ def ovoqn(t, y):
             alpha *= 0.5
             
         xk = x_trial
-        table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
+        elapsed = time.time() - start_time
+        table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist(),elapsed])
         np.savetxt('txt/sol_osborne_cn.txt',xk,fmt='%.6f')
 
     print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)
+    print(fxk)
     return xk
 
 data = np.loadtxt("txt/data_osborne1.txt")

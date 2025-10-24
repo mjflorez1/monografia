@@ -4,6 +4,12 @@ from tabulate import tabulate
 import matplotlib.pyplot as plt
 import time
 
+size_img = 0.6
+plt.rcParams.update({'font.size': 11})
+plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
 def model(t, x0, x1, x2):
     return x0 * np.exp((-x1 * ((t - x2)**2)) / 2)
 
@@ -143,7 +149,7 @@ def ovoqn(t, y, q):
 
     return xk, fxk, iteracion, fcnt
 
-data = np.loadtxt("data_gauss.txt")
+data = np.loadtxt("txt/data_gauss.txt")
 t = data[:, 0]
 y = data[:, 1]
 
@@ -166,9 +172,9 @@ for o in range(7):
 headers = ["o", "f(x*)", "#it", "#fcnt", "Time (s)", "x0", "x1", "x2"]
 print(tabulate(results, headers=headers, tablefmt="grid", floatfmt=(".0f", ".6e", ".0f", ".0f", ".6f", ".6f", ".6f", ".6f")))
 
-plt.plot(outliers_list, f_values, 'o-', linewidth=2, markersize=8, color='blue')
-plt.xlabel('Número de outliers ignorados', fontsize=12)
-plt.ylabel('f(x*)', fontsize=12)
-#plt.yscale("log")
+plt.plot(outliers_list, f_values, 'o-', linewidth=1, markersize=3)
+plt.xlabel('Número de outliers ($o$)', fontsize=12)
+plt.ylabel('$f(x^*)$', fontsize=12)
+plt.yscale("log")
 plt.savefig("figuras/cngaussvsouts_ovoqn.pdf", bbox_inches='tight')
 plt.show()

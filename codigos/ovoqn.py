@@ -31,6 +31,12 @@ from scipy.optimize import minimize
 from tabulate import tabulate
 import matplotlib.pyplot as plt
 
+size_img = 0.6
+plt.rcParams.update({'font.size': 11})
+plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
 def model(t, x1, x2, x3, x4):
     return x1 + x2*t + x3*(t**2) + x4*(t**3)
 
@@ -168,45 +174,118 @@ def ovoqn(t, y):
 
         xk = x_trial
         table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist()])
+        np.savetxt('txt/sol_cubic_cn.txt',xk, fmt="%.6f")
         
     print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)
-    return xk
+    return xk, fxk
 
-# ---------------------- CARGA DE DATOS ----------------------
-data = np.loadtxt("data.txt")
+data = np.loadtxt("txt/data.txt")
 t = data[:,0]
 y = data[:,1]
+
+# Arrays para almacenar resultados
+outliers_list = []
+fxk_list = []
+
+# Ejecutar para diferentes números de outliers
 m = len(t)
+for num_outliers in range(0, 12):
+    print(f"\n{'='*60}")
+    print(f"Ejecutando con {num_outliers} outliers")
+    print(f"{'='*60}")
+    
+    # Modificar q según el número de outliers
+    q = m - num_outliers - 1
+    
+    # Crear copia del algoritmo con q modificado
+    epsilon = 1e-9
+    delta = 1e-2
+    deltax = 1.2
+    theta = 0.7
+    max_iter = 200
+    max_iterarmijo = 100
 
-# ---------------------- OVO ----------------------
-xk_final = ovoqn(t,y)
-y_ovo = model(t, *xk_final)
+    xk = np.array([-1.0, -2.0, 1.0, -1.0])
+    faux = np.zeros(m)
+    Idelta = np.zeros(m, dtype=int)
+    types  = np.empty(m, dtype=object)
 
-# ---------------------- MÉTODO minimize ----------------------
-x_star = [0, 2, -3, 1]
-w = x_star[0] + x_star[1]*t + x_star[2]*t**2 + x_star[3]*t**3
+    iteracion = 0
+    while iteracion < max_iter:
+        iteracion += 1
 
-def objetivo(x):
-    y_modelo = np.polyval(x[::-1], t)
-    return np.sum((y - y_modelo) ** 2)
+        for i in range(m):
+            faux[i] = f_i(t[i], y[i], xk)
 
-x0 = [-1, -2, 1, -1]
-bounds = [(-10, 10)] * 4
-res = minimize(objetivo, x0, method='L-BFGS-B', bounds=bounds)
+        indices = np.argsort(faux)
+        faux_sorted = np.sort(faux)
+        fxk = faux_sorted[q]
 
-print("\nCoeficientes mínimos cuadrados:")
-print(res.x)
-print(f"Iteraciones minimize: {res.nit}")
-print(f"Valor final función objetivo: {res.fun:.6e}")
+        nconst = mount_Idelta(fxk, faux_sorted, indices, delta, Idelta, types, m)
+        if nconst == 0:
+            break
 
-y_fit = np.polyval(res.x[::-1], t)
+        grads = []
+        Bkjs = []
+        constr_types = []
+        for r in range(nconst):
+            ind = Idelta[r]
+            g = np.zeros(4)
+            grad_f_i(t[ind], y[ind], xk, g)
+            H = hess_f_i(t[ind])
+            Bkjs.append(compute_Bkj(H))
+            grads.append(g)
+            constr_types.append(types[r])
 
-# ---------------------- GRÁFICA FINAL ----------------------
-plt.figure()
-plt.scatter(t, y, color='y', label='Datos observados')
-plt.plot(t, y_fit, 'b-', linewidth=1.5, label='Ajuste con OLS')
-plt.plot(t, y_ovo, 'r-', linewidth=1.5, label='Ajuste OVO')
-plt.legend(loc='lower right')
-plt.savefig("figuras/comparacion_ovoqn_ols.pdf", bbox_inches='tight')
+        x0 = np.zeros(5)
+        bounds = [
+            (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
+            (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)),
+            (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)),
+            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
+            (None, 0.0)
+        ]
+
+        constraints = []
+        for g, B, ctype in zip(grads, Bkjs, constr_types):
+            constraints.append({
+                'type': ctype,
+                'fun': lambda var, g=g, B=B: constraint_fun(var, g, B),
+                'jac': lambda var, g=g, B=B: constraint_jac(var, g, B)
+            })
+
+        res = minimize(lambda var: var[4], x0, method="SLSQP",
+                       bounds=bounds, constraints=constraints)
+
+        d_sol = res.x[:4]
+        mkd = res.fun
+
+        if abs(mkd) < epsilon:
+            xk += d_sol
+            break
+
+        alpha = 1
+        iter_armijo = 0
+        x_trial = xk
+        while iter_armijo < max_iterarmijo:
+            iter_armijo += 1
+            x_trial = xk + alpha * d_sol
+            faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
+            fxk_trial = np.sort(faux_trial)[q]
+            if fxk_trial <= fxk + theta * alpha * mkd:
+                break
+            alpha *= 0.5
+
+        xk = x_trial
+    
+    outliers_list.append(num_outliers)
+    fxk_list.append(fxk)
+    print(f'Solución con {num_outliers} outliers, f(x*) = {fxk}')
+
+plt.plot(outliers_list, fxk_list, 'o-', linewidth=1, markersize=3)
+plt.xlabel('Número de outliers ($o$)', fontsize=12)
+plt.ylabel('$f(x^*)$', fontsize=12)
+plt.yscale('log')
+plt.savefig("figuras/cubic_cn_outs.pdf", bbox_inches="tight")
 plt.show()
