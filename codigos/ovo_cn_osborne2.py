@@ -70,9 +70,9 @@ def constraint_jac(var, g, B):
 def ovoqn(t, y):
     epsilon = 1e-8
     delta = 1e-3
-    deltax = 0.1
-    theta = 0.7
-    q = 77
+    deltax = 20
+    theta = 0.5
+    q = 64
     max_iter = 200
     max_iterarmijo = 100
 
@@ -115,17 +115,17 @@ def ovoqn(t, y):
 
         x0 = np.zeros(12)
         bounds = [
-            (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
-            (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)),
-            (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
+            (-deltax, deltax),
             (None, 0.0)
         ]
 

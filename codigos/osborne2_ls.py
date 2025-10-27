@@ -32,7 +32,7 @@ def objetivo(x):
 
 # Punto inicial (mismo que x_star)
 x0 = x_star
-bounds = [(-10, 10)] * 11
+bounds = [(-20, 20)] * 11
 
 # Minimización
 res = minimize(objetivo, x0, method='L-BFGS-B', bounds=bounds)

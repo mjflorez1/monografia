@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def model(t, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11):
-    return (x1 * np.exp(-t * x5) + x2 * np.exp(-x6 * (t - x9) ** 2) + x3 * np.exp(-x7 * (t - x10) ** 2)
-        + x4 * np.exp(-x8 * (t - x11) ** 2))
+    return (x1 * np.exp(-t * x5) + 
+            x2 * np.exp(-x6 * (t - x9)  ** 2) + 
+            x3 * np.exp(-x7 * (t - x10) ** 2) +
+            x4 * np.exp(-x8 * (t - x11) ** 2))
 
 size_img = 0.6
 plt.rcParams.update({'font.size': 11})
