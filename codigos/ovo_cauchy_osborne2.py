@@ -40,7 +40,7 @@ def mount_Idelta(fovo, faux, indices, delta, Idelta):
 def ovo_algorithm(t, y):
     epsilon = 1e-8
     delta   = 1e-3
-    deltax  = 1
+    deltax  = 0.1
     theta   = 0.5
     n = 12
     q = 64
@@ -50,11 +50,9 @@ def ovo_algorithm(t, y):
 
     xk = np.array([1.3, 0.65, 0.65, 0.7, 0.6, 3, 5, 7, 2, 4.5, 5.5])
 
-
     xktrial = np.zeros(n - 1)
     faux    = np.zeros(m)
     Idelta  = np.zeros(m, dtype=int)
-
 
     c = np.zeros(n)
     c[-1] = 1
@@ -65,7 +63,7 @@ def ovo_algorithm(t, y):
 
         bounds = []
         for i in range(len(xk)):
-            bounds.append((max(-10 - xk[i], -deltax), min(10 - xk[i], deltax)))
+            bounds.append((-deltax, deltax))
         bounds.append((None, 0))
 
         for i in range(m):
