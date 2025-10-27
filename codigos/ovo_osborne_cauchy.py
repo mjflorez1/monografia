@@ -29,17 +29,18 @@ def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
 
 def ovo(t, y):
     stop = 1e-8
-    epsilon = 3e-3
-    delta = 1.7
+    epsilon = 1e-4
+    delta = 1e+3
     theta = 0.5
     n = 6
     m = len(t)
     q = 24
-    max_iter = 200
-    max_iter_armijo = 35
+    max_iter = 1000
+    max_iter_armijo = 100
     iter = 1
 
-    xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
+    # xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
+    xk = np.loadtxt("txt/sol_osborne_ls.txt")
     xktrial = np.zeros(5)
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
@@ -85,6 +86,10 @@ def ovo(t, y):
         dk = res.x
         mkd = dk[-1]
 
+        elapsed = time.time() - start_time
+
+        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:nconst].tolist(),elapsed])
+
         if abs(mkd) < stop:
             break
 
@@ -106,8 +111,7 @@ def ovo(t, y):
 
         xk = xktrial
         iter += 1
-        elapsed = time.time() - start_time
-        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist(),elapsed])
+        
         np.savetxt('txt/sol_osborne_cauchy.txt',xk,fmt='%.6f')
     
     print(tabulate(table, headers=header, tablefmt="grid"))
@@ -119,10 +123,12 @@ data = np.loadtxt("txt/data_osborne1.txt")
 t = data[:, 0]
 y = data[:, 1]
 
+x = np.linspace(t[0],t[-1],1000)
+
 xk_final = ovo(t, y)
-y_pred = model(t, *xk_final)
+y_pred = model(x, *xk_final)
 
 plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
-plt.plot(t, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
+plt.plot(x, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
 plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight")
 plt.show()

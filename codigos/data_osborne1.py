@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 size_img = 0.6
 plt.rcParams.update({'font.size': 11})
@@ -17,12 +18,13 @@ y = np.array([
     0.431, 0.424, 0.420, 0.414, 0.411, 0.406
 ])
 
-noise = 0.2
-y[10] += noise
-y[11] += noise
-y[12] += noise
-y[13] += noise
-y[14] += noise
+random.seed(1234)
+
+y[4] += random.uniform(0.1, 0.2)
+y[9] += random.uniform(0.1, 0.2)
+y[14] += random.uniform(0.1, 0.2)
+y[19] += random.uniform(0.1, 0.2)
+y[24] += random.uniform(0.1, 0.2)
 
 t = np.array([10*(i-1) for i in range(1, m+1)])
 
