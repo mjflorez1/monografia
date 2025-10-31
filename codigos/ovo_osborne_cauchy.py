@@ -12,7 +12,7 @@ def f_i(t_i, y_i, x):
 
 def grad_f_i(t_i, y_i, x, grad):
     diff = model(t_i, *x) - y_i
-    grad[0] = diff * 1
+    grad[0] = diff
     grad[1] = diff * np.exp(-t_i * x[3])
     grad[2] = diff * np.exp(-t_i * x[4])
     grad[3] = diff * -t_i * x[1] * np.exp(-t_i * x[3])
@@ -34,18 +34,17 @@ def ovo(t, y):
     theta = 0.5
     n = 6
     m = len(t)
-    q = 24
-    max_iter = 1000
+    q = 27
+    max_iter = 500
     max_iter_armijo = 100
     iter = 1
 
-    # xk = np.array([0.5, 1.5, -1.0, 0.01, 0.02])
     xk = np.loadtxt("txt/sol_osborne_ls.txt")
     xktrial = np.zeros(5)
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
     
-    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta, Tiempo (s)"]
+    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta", "Tiempo (s)"]
     table = []
 
     c = np.zeros(n)
@@ -53,8 +52,6 @@ def ovo(t, y):
 
     start_time = time.time()
     while iter <= max_iter:    
-        iter_armijo = 0
-        
         x0_bounds = (-delta, delta)
         x1_bounds = (-delta, delta)
         x2_bounds = (-delta, delta)
@@ -82,37 +79,33 @@ def ovo(t, y):
 
         res = linprog(c, A_ub=A, b_ub=b, 
                      bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds, x4_bounds, x5_bounds])
-        
+
         dk = res.x
         mkd = dk[-1]
-
-        elapsed = time.time() - start_time
-
-        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:nconst].tolist(),elapsed])
 
         if abs(mkd) < stop:
             break
 
         alpha = 1
+        iter_armijo = 0
         while iter_armijo <= max_iter_armijo:
             iter_armijo += 1
             xktrial = xk + (alpha * dk[:-1])
             
-            faux_trial = np.zeros(m)
-            for i in range(m):
-                faux_trial[i] = f_i(t[i], y[i], xktrial)
-            
-            faux_trial_sorted = np.sort(faux_trial)
-            fxktrial = faux_trial_sorted[q]
+            faux_trial = np.array([f_i(t[i], y[i], xktrial) for i in range(m)])
+            fxktrial = np.sort(faux_trial)[q]
             
             if fxktrial <= fxk + (theta * alpha * mkd):
                 break
             alpha *= 0.5
 
         xk = xktrial
+        elapsed = time.time() - start_time
+
+        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:nconst].tolist(), elapsed])
+        np.savetxt('txt/sol_osborne_cauchy.txt', xk, fmt='%.6f')
+
         iter += 1
-        
-        np.savetxt('txt/sol_osborne_cauchy.txt',xk,fmt='%.6f')
     
     print(tabulate(table, headers=header, tablefmt="grid"))
     print('Solución final:', xk)
@@ -123,7 +116,7 @@ data = np.loadtxt("txt/data_osborne1.txt")
 t = data[:, 0]
 y = data[:, 1]
 
-x = np.linspace(t[0],t[-1],1000)
+x = np.linspace(t[0], t[-1], 1000)
 
 xk_final = ovo(t, y)
 y_pred = model(x, *xk_final)

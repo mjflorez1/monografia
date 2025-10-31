@@ -147,7 +147,7 @@ def ovoqn(t, y, q_value):
     elapsed_time = time.time() - start_time
     return xk, fxk, iteracion, fcnt, elapsed_time
 
-data = np.loadtxt("data.txt")
+data = np.loadtxt("txt/data.txt")
 t = data[:,0]
 y = data[:,1]
 m = len(t)

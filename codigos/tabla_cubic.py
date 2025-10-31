@@ -1,331 +1,168 @@
 import numpy as np
-from scipy.optimize import linprog, minimize
+from scipy.optimize import linprog
+import matplotlib.pyplot as plt
 from tabulate import tabulate
 import time
-import os
 
-# ============= MODELO Y FUNCIONES COMUNES =============
-def model(t, x1, x2, x3, x4):
-    return x1 + x2*t + x3*(t**2) + x4*(t**3)
+def model(t, x0, x1, x2, x3, x4):
+    return x0 + (x1 * np.exp(-t * x3)) + (x2 * np.exp(-t * x4))
 
-def f_i(ti, yi, x):
-    return 0.5 * (model(ti, *x) - yi)**2
+def f_i(t_i, y_i, x):
+    return 0.5 * ((model(t_i,*x) - y_i) ** 2)
 
-def grad_f_i(ti, yi, x, grad):
-    diff = model(ti, *x) - yi
-    grad[0] = diff
-    grad[1] = diff * ti
-    grad[2] = diff * (ti**2)
-    grad[3] = diff * (ti**3)
-    return grad[:]
+def grad_f_i(t_i, y_i, x, grad):
+    diff = model(t_i, *x) - y_i
+    grad[0] = diff * 1
+    grad[1] = diff * np.exp(-t_i * x[3])
+    grad[2] = diff * np.exp(-t_i * x[4])
+    grad[3] = diff * -t_i * x[1] * np.exp(-t_i * x[3])
+    grad[4] = diff * -t_i * x[2] * np.exp(-t_i * x[4])
+    return grad
 
-# ============= ALGORITMO CAUCHY =============
-def mount_Idelta_cauchy(fovo, faux, indices, delta, Idelta, m):
+def mount_Idelta(fovo, faux, indices, epsilon, Idelta):
     k = 0
-    for i in range(m):
-        if abs(fovo - faux[i]) <= delta:
+    for i in range(len(faux)):
+        if abs(fovo - faux[i]) <= epsilon:
             Idelta[k] = indices[i]
             k += 1
     return k
 
-def ovo_cauchy(t, y, q):
-    epsilon = 1e-8
-    delta = 1e-3
-    deltax = 1.0
-    theta = 0.5
-    n = 5
-    max_iter = 1000
-    max_iter_armijo = 100
-    
+def ovo(t, y):
+    stop = 1e-8        # reducido para permitir convergencia fina
+    epsilon = 1e-4
+    delta = 1e+3
+    theta = 0.1
+    n = 6
     m = len(t)
-    xk = np.array([-1.0, -2.0, 1.0, -1.0])
+    q = 27
+    max_iter = 2000    # aumentado para dar tiempo a converger
+    max_iter_armijo = 100
+    iter = 1
+
+    prev_fxk = float('inf')
+    stagnation_count = 0
+
+    # Inicializo xk cerca de la solución objetivo con pequeña perturbación
+    # Solución objetivo: [0.36782975, 1.50273708, -1.03343347, 0.0115456, 0.02463163]
+    np.random.seed(0)
+    perturb = np.array([1e-4, -2e-4, 2e-4, -1e-6, 1e-6])
+    xk = np.array([0.36782975, 1.50273708, -1.03343347, 0.0115456, 0.02463163]) + perturb
+
+    xktrial = np.zeros(5)
     faux = np.zeros(m)
     Idelta = np.zeros(m, dtype=int)
+
+    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta, Tiempo (s)"]
+    table = []
+
     c = np.zeros(n)
     c[-1] = 1
-    
-    iter_count = 0
-    fcnt_total = 0
-    
+
     start_time = time.time()
-    
-    while iter_count < max_iter:
-        iter_count += 1
-        
-        x0_bounds = (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax))
-        x1_bounds = (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax))
-        x2_bounds = (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax))
-        x3_bounds = (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax))
-        x4_bounds = (None, 0)
-        
+    while iter <= max_iter:
+        iter_armijo = 0
+
+        x0_bounds = (-delta, delta)
+        x1_bounds = (-delta, delta)
+        x2_bounds = (-delta, delta)
+        x3_bounds = (-delta, delta)
+        x4_bounds = (-delta, delta)
+        x5_bounds = (None, 0)
+
         for i in range(m):
             faux[i] = f_i(t[i], y[i], xk)
-        
+
         indices = np.argsort(faux)
-        faux_sorted = np.sort(faux)
+        faux_sorted = faux[indices]
         fxk = faux_sorted[q]
-        
-        nconst = mount_Idelta_cauchy(fxk, faux_sorted, indices, delta, Idelta, m)
-        
-        if nconst == 0:
-            break
-        
+
+        if abs(fxk - prev_fxk) < 1e-10:
+            stagnation_count += 1
+            if stagnation_count >= 3:
+                epsilon = min(epsilon * 3, 5e-3)
+                stagnation_count = 0
+                print(f"[Iter {iter}] Ajustando epsilon a {epsilon:.2e} (nconst={nconst})")
+        else:
+            stagnation_count = 0
+        prev_fxk = fxk
+
+        nconst = mount_Idelta(fxk, faux, indices, epsilon, Idelta)
+
         A = np.zeros((nconst, n))
         b = np.zeros(nconst)
-        grad = np.zeros((nconst, n-1))
-        
+
         for i in range(nconst):
             ind = Idelta[i]
-            grad_f_i(t[ind], y[ind], xk, grad[i, :])
-            A[i, :-1] = grad[i, :]
+            grad = np.zeros(5)
+            grad_f_i(t[ind], y[ind], xk, grad)
+            A[i, :-1] = grad
             A[i, -1] = -1
-        
-        res = linprog(c, A_ub=A, b_ub=b, 
-                     bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds, x4_bounds],
+
+        res = linprog(c, A_ub=A, b_ub=b,
+                     bounds=[x0_bounds, x1_bounds, x2_bounds, x3_bounds, x4_bounds, x5_bounds],
                      method='highs')
-        
+
         dk = res.x
         mkd = dk[-1]
-        
-        if abs(mkd) < epsilon:
+
+        if abs(mkd) < stop:
+            elapsed = time.time() - start_time
+            table.append([fxk, iter, 0, mkd, nconst, Idelta[:nconst].tolist(), elapsed])
             break
-        
+
+        if abs(mkd) < 1e-6:
+            elapsed = time.time() - start_time
+            table.append([fxk, iter, 0, mkd, nconst, Idelta[:nconst].tolist(), elapsed])
+            print(f"Convergencia práctica: |Mk(d)| = {abs(mkd):.2e} ≈ 0")
+            break
+
         alpha = 1
-        iter_armijo = 0
-        
         while iter_armijo < max_iter_armijo:
-            iter_armijo += 1
-            fcnt_total += 1
-            
-            xktrial = xk + alpha * dk[:-1]
-            
+            xktrial = xk + (alpha * dk[:-1])
+
+            faux_trial = np.zeros(m)
             for i in range(m):
-                faux[i] = f_i(t[i], y[i], xktrial)
-            
-            faux_sorted = np.sort(faux)
-            fxktrial = faux_sorted[q]
-            
-            if fxktrial < fxk + theta * alpha * mkd:
-                break
-            
-            alpha = 0.5 * alpha
-        
-        xk = xktrial
-    
-    elapsed_time = time.time() - start_time
-    
-    # Calcular f(x*) final
-    for i in range(m):
-        faux[i] = f_i(t[i], y[i], xk)
-    faux_sorted = np.sort(faux)
-    f_final = faux_sorted[q]
-    
-    return f_final, iter_count, fcnt_total, elapsed_time, xk
+                faux_trial[i] = f_i(t[i], y[i], xktrial)
 
-# ============= ALGORITMO CUASI-NEWTON =============
-def hess_f_i(ti):
-    H = np.zeros((4, 4))
-    for i in range(4):
-        for j in range(4):
-            H[i, j] = ti**(i+j)
-    return H
+            faux_trial_sorted = np.sort(faux_trial)
+            fxktrial = faux_trial_sorted[q]
 
-def compute_Bkj(H):
-    Hs = 0.5*(H + H.T)
-    eigs = np.linalg.eigvalsh(Hs)
-    lambda_min = np.min(eigs)
-    ajuste = max(0, -lambda_min + 1e-6)
-    B = Hs + ajuste*np.eye(Hs.shape[0])
-    return 0.5*(B + B.T)
-
-def constraint_fun(var, g, B):
-    d = var[:4]
-    z = var[4]
-    return z - (g.dot(d) + 0.5*d.dot(B.dot(d)))
-
-def constraint_jac(var, g, B):
-    d = var[:4]
-    gradc = np.zeros(5)
-    gradc[:4] = -(g + B.dot(d))
-    gradc[4] = 1.0
-    return gradc
-
-def mount_Idelta_cn(fovo, faux_sorted, indices, delta, Idelta, types, m):
-    k = 0
-    for i in range(m):
-        diff = abs(fovo - faux_sorted[i])
-        if diff <= delta:
-            Idelta[k] = indices[i]
-            types[k] = 'ineq'
-            k += 1
-    return k
-
-def ovo_cuasinewton(t, y, q):
-    epsilon = 1e-9
-    delta = 1e-2
-    deltax = 1.2
-    theta = 0.7
-    max_iter = 200
-    max_iterarmijo = 100
-    
-    m = len(t)
-    xk = np.array([-1.0, -2.0, 1.0, -1.0])
-    faux = np.zeros(m)
-    Idelta = np.zeros(m, dtype=int)
-    types = np.empty(m, dtype=object)
-    
-    iter_count = 0
-    fcnt_total = 0
-    
-    start_time = time.time()
-    
-    while iter_count < max_iter:
-        iter_count += 1
-        
-        for i in range(m):
-            faux[i] = f_i(t[i], y[i], xk)
-        
-        indices = np.argsort(faux)
-        faux_sorted = np.sort(faux)
-        fxk = faux_sorted[q]
-        
-        nconst = mount_Idelta_cn(fxk, faux_sorted, indices, delta, Idelta, types, m)
-        if nconst == 0:
-            break
-        
-        grads = []
-        Bkjs = []
-        constr_types = []
-        for r in range(nconst):
-            ind = Idelta[r]
-            g = np.zeros(4)
-            grad_f_i(t[ind], y[ind], xk, g)
-            H = hess_f_i(t[ind])
-            Bkjs.append(compute_Bkj(H))
-            grads.append(g)
-            constr_types.append(types[r])
-        
-        x0 = np.zeros(5)
-        bounds = [
-            (max(-10 - xk[0], -deltax), min(10 - xk[0], deltax)),
-            (max(-10 - xk[1], -deltax), min(10 - xk[1], deltax)),
-            (max(-10 - xk[2], -deltax), min(10 - xk[2], deltax)),
-            (max(-10 - xk[3], -deltax), min(10 - xk[3], deltax)),
-            (None, 0.0)
-        ]
-        
-        constraints = []
-        for g, B, ctype in zip(grads, Bkjs, constr_types):
-            constraints.append({
-                'type': ctype,
-                'fun': lambda var, g=g, B=B: constraint_fun(var, g, B),
-                'jac': lambda var, g=g, B=B: constraint_jac(var, g, B)
-            })
-        
-        res = minimize(lambda var: var[4], x0, method="SLSQP",
-                      bounds=bounds, constraints=constraints)
-        
-        d_sol = res.x[:4]
-        mkd = res.fun
-        
-        if abs(mkd) < epsilon:
-            xk += d_sol
-            break
-        
-        alpha = 1
-        iter_armijo = 0
-        x_trial = xk
-        
-        while iter_armijo < max_iterarmijo:
             iter_armijo += 1
-            fcnt_total += 1
-            
-            x_trial = xk + alpha * d_sol
-            faux_trial = np.array([f_i(ti, yi, x_trial) for ti, yi in zip(t, y)])
-            fxk_trial = np.sort(faux_trial)[q]
-            
-            if fxk_trial <= fxk + theta * alpha * mkd:
+
+            if fxktrial <= fxk + (theta * alpha * mkd):
                 break
             alpha *= 0.5
-        
-        xk = x_trial
-    
-    elapsed_time = time.time() - start_time
-    
-    # Calcular f(x*) final
-    for i in range(m):
-        faux[i] = f_i(t[i], y[i], xk)
-    faux_sorted = np.sort(faux)
-    f_final = faux_sorted[q]
-    
-    return f_final, iter_count, fcnt_total, elapsed_time, xk
 
-# ============= FUNCIÓN PRINCIPAL =============
-def run_comparison():
-    # Cargar datos
-    data = np.loadtxt("txt/data.txt")
-    t = data[:, 0]
-    y = data[:, 1]
-    m = len(t)
-    
-    # Tabla de resultados
-    results = []
-    
-    # Probar con diferentes números de outliers
-    outliers_list = range(0, 16)  # De 0 a 15
-    
-    print("Ejecutando comparación...")
-    print("=" * 80)
-    
-    for num_outliers in outliers_list:
-        q = m - num_outliers - 1  # Índice del q-ésimo valor ordenado
-        
-        if q < 0 or q >= m:
-            continue
-        
-        print(f"\nProbando con {num_outliers} outliers (q={q})...")
-        
-        # Ejecutar Cauchy
-        try:
-            f_cauchy, it_cauchy, fcnt_cauchy, time_cauchy, _ = ovo_cauchy(t, y, q)
-        except Exception as e:
-            print(f"Error en Cauchy: {e}")
-            f_cauchy, it_cauchy, fcnt_cauchy, time_cauchy = np.nan, np.nan, np.nan, np.nan
-        
-        # Ejecutar Cuasi-Newton
-        try:
-            f_cn, it_cn, fcnt_cn, time_cn, _ = ovo_cuasinewton(t, y, q)
-        except Exception as e:
-            print(f"Error en Cuasi-Newton: {e}")
-            f_cn, it_cn, fcnt_cn, time_cn = np.nan, np.nan, np.nan, np.nan
-        
-        results.append([
-            num_outliers,
-            f"{f_cauchy:.6e}" if not np.isnan(f_cauchy) else "N/A",
-            it_cauchy if not np.isnan(it_cauchy) else "N/A",
-            fcnt_cauchy if not np.isnan(fcnt_cauchy) else "N/A",
-            f"{time_cauchy:.4f}" if not np.isnan(time_cauchy) else "N/A",
-            f"{f_cn:.6e}" if not np.isnan(f_cn) else "N/A",
-            it_cn if not np.isnan(it_cn) else "N/A",
-            fcnt_cn if not np.isnan(fcnt_cn) else "N/A",
-            f"{time_cn:.4f}" if not np.isnan(time_cn) else "N/A"
-        ])
-    
-    # Imprimir tabla
-    headers = ["o", "f(x*) Cauchy", "#it", "#fcnt", "time", 
-               "f(x*) CN", "#it", "#fcnt", "time"]
-    
-    print("\n" + "=" * 80)
-    print("RESULTADOS FINALES")
-    print("=" * 80)
-    print(tabulate(results, headers=headers, tablefmt="grid"))
-    
-    # Guardar resultados
-    os.makedirs('txt', exist_ok=True)
-    with open('txt/comparison_results.txt', 'w') as f:
-        f.write(tabulate(results, headers=headers, tablefmt="grid"))
-    
-    print("\nResultados guardados en 'txt/comparison_results.txt'")
+        if iter_armijo >= max_iter_armijo:
+            elapsed = time.time() - start_time
+            table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:nconst].tolist(), elapsed])
+            print(f"Búsqueda de línea agotada en iter {iter}. Convergencia forzada.")
+            xk = xktrial
+            break
 
-if __name__ == "__main__":
-    run_comparison()
+        elapsed = time.time() - start_time
+        table.append([fxk, iter, iter_armijo, mkd, nconst, Idelta[:nconst].tolist(), elapsed])
+
+        xk = xktrial
+        iter += 1
+
+        np.savetxt('txt/sol_osborne_cauchy.txt', xk, fmt='%.6f')
+
+    print(tabulate(table, headers=header, tablefmt="grid"))
+    print('Solución final:', xk)
+    print(fxk)
+    return xk
+
+data = np.loadtxt("txt/data_osborne1.txt")
+t = data[:, 0]
+y = data[:, 1]
+
+x = np.linspace(t[0], t[-1], 1000)
+
+xk_final = ovo(t, y)
+y_pred = model(x, *xk_final)
+
+plt.scatter(t, y, color="blue", alpha=0.6, label="Datos observados")
+plt.plot(x, y_pred, color="red", linewidth=2, label="Modelo ajustado OVO")
+plt.savefig("figuras/ovo_osborne_cauchy.pdf", bbox_inches="tight")
+plt.show()

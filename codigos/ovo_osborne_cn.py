@@ -70,7 +70,7 @@ def ovoqn(t, y):
     Idelta = np.zeros(m, dtype=int)
     types = np.empty(m, dtype=object)
     
-    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta, Tiempo (s)"]
+    header = ["f(xk)", "Iter", "IterArmijo", "Mk(d)", "ncons", "Idelta", "Tiempo (s)"]
     table = []
 
     iteracion = 0
@@ -154,10 +154,12 @@ data = np.loadtxt("txt/data_osborne1.txt")
 t = data[:,0]
 y = data[:,1]
 
+x = np.linspace(t[0],t[-1],1000)
+
 xk_final = ovoqn(t, y)
-y_pred = model(t, *xk_final)
+y_pred = model(x, *xk_final)
 
 plt.scatter(t, y, color="magenta", alpha=0.6, label="Datos observados")
-plt.plot(t, y_pred, color="green", linewidth=2, label="Modelo ajustado OVOQN")
+plt.plot(x, y_pred, color="green", linewidth=2, label="Modelo ajustado OVOQN")
 plt.savefig("figuras/ovoqn_osborne.pdf", bbox_inches="tight")
 plt.show()
