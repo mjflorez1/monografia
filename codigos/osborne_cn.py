@@ -158,7 +158,7 @@ t = data[:,0]
 y = data[:,1]
 m = len(t)
 
-num_outliers = [8]
+num_outliers = list(range(0,9))
 results = []
 
 for n_out in num_outliers:
