@@ -35,7 +35,7 @@ def ovo(t, y):
     n = 6
     m = len(t)
     q = 27
-    max_iter = 500
+    max_iter = 200
     max_iter_armijo = 100
     iter = 1
 
