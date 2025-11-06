@@ -143,7 +143,7 @@ def ovoqn(t, y):
         xk = x_trial
         elapsed = time.time() - start_time
         table.append([fxk, iteracion, iter_armijo, mkd, nconst, Idelta[:min(5, nconst)].tolist(),elapsed])
-        np.savetxt('txt/outs_osborne_cn0.txt',xk,fmt='%.6f')
+        np.savetxt('txt/sol_osborne_cn.txt',xk,fmt='%.6f')
 
     print(tabulate(table, headers=header, tablefmt="grid"))
     print("Solución final:", xk)
