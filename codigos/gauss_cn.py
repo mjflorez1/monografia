@@ -174,7 +174,7 @@ print(tabulate(results, headers=headers, tablefmt="grid", floatfmt=(".0f", ".6e"
 
 plt.plot(outliers_list, f_values, 'o-', linewidth=1, markersize=3)
 plt.xlabel('Número de outliers ($o$)', fontsize=12)
-plt.ylabel('$f(x^*)$', fontsize=12)
+plt.ylabel('$f(x^*)$ (log scale)', fontsize=12)
 plt.yscale("log")
-plt.savefig("figuras/cngaussvsouts_ovoqn.pdf", bbox_inches='tight')
+plt.savefig("figuras/gauss_cn_vs_outliers.pdf", bbox_inches='tight')
 plt.show()

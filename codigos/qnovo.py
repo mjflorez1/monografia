@@ -4,6 +4,11 @@ from tabulate import tabulate
 import matplotlib.pyplot as plt
 import time
 
+size_img = 0.6
+plt.rcParams.update({'font.size': 11})
+plt.rcParams['figure.figsize'] = [size_img * 6.4, size_img * 4.8]
+plt.rc('font', family='serif')
+
 def model(t, x1, x2, x3, x4):
     return x1 + x2*t + x3*(t**2) + x4*(t**3)
 
@@ -171,9 +176,11 @@ print("="*70)
 # Extraer valores para graficar
 f_values = [row[1] for row in results]
 
-plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=8)
-plt.xlabel('Número de outliers ignorados')
-plt.ylabel('f(x*)')
-plt.xticks(num_outliers)
+plt.plot(num_outliers, f_values, 'o-', linewidth=2, markersize=3)
+plt.xlabel('Número de outliers ($o$)')
+plt.ylabel('$f(x^*)$')
+
+plt.xlim(0,12)
+plt.xticks(range(0,13))
 plt.savefig("figuras/cnewton.pdf", bbox_inches = 'tight')
 plt.show()

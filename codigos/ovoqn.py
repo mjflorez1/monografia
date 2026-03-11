@@ -285,7 +285,7 @@ for num_outliers in range(0, 12):
 
 plt.plot(outliers_list, fxk_list, 'o-', linewidth=1, markersize=3)
 plt.xlabel('Número de outliers ($o$)', fontsize=12)
-plt.ylabel('$f(x^*)$', fontsize=12)
+plt.ylabel('$f(x^*)$ (log scale)', fontsize=12)
 plt.yscale('log')
 plt.savefig("figuras/cubic_cn_outs.pdf", bbox_inches="tight")
 plt.show()
