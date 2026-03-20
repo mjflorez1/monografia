@@ -2,12 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-size_img = 0.6
-plt.rcParams.update({'font.size': 11})
-plt.rcParams['figure.figsize'] = [size_img * 6.4,size_img * 4.8]
-plt.rc('text', usetex=True)
-plt.rc('font', family='serif')
-
 # Dominio
 x = np.linspace(0.5, 4.5, 1000)
 
@@ -71,9 +65,7 @@ def update(i):
     
     return point, region
 
-ani = FuncAnimation(fig, update, frames=range(0, len(x), 5),
+ani = FuncAnimation(fig, update, frames=len(x),
                     init_func=init, interval=20, blit=False)
-
-ani.save("figuras/idelta.mp4", writer="ffmpeg", fps=30, dpi=200)
 
 plt.show()
